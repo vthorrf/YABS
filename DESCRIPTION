@@ -1,0 +1,16 @@
+Package: YABS
+Type: Package
+Title: What the Package Does Using Title Case
+Version: 1.0
+Date: 2021-12-02
+Author: Your Name
+Maintainer: Your Name <your@email.com>
+Description: More details about what the package does. See
+           <http://cran.r-project.org/doc/manuals/r-release/R-exts.html#The-DESCRIPTION-file> for details
+           on how to write this part.
+License: GPL (>= 2)
+Encoding: UTF-8
+RoxygenNote: 7.1.1
+Imports: Rcpp (>= 1.0.7)
+Depends: coda (>= 0.19-4)
+LinkingTo: Rcpp, RcppArmadillo

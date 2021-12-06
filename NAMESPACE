@@ -1,0 +1,7 @@
+#exportPattern("^[[:alpha:]]+")
+useDynLib(YABS, .registration=TRUE)
+exportPattern("MCMC")
+exportPattern("print.bayes")
+S3method(print, bayes)
+S3method(summary, bayes)
+importFrom(Rcpp, evalCpp)
