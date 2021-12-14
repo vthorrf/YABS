@@ -2,6 +2,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
                  burnin=NULL, status=NULL, thinning=NULL,
                  algo=c("harmwg","harm","nutsda"), M_adap=NULL) {
   ### Initial settings
+  if(length(algo) > 1)        algo           <- "harmwg"
   if(is.null(Initial.Values)) Initial.Values <- Data$PGF(Data)
   if(is.null(iterations))     iterations     <- 100
   if(iterations <= 0)         iterations     <- 100
@@ -33,8 +34,8 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
     method = "HARM-WG"
     cat("Algorithm: Hit-and-Run Metropolis-within-Gibbs\n\n")
     startTime = proc.time()
-    fit <- mcmcmwg(Model, Data, ITER, status, thinning, acceptance,
-                   DEV, liv, MON, MO0, thinned)
+    fit <- harmwg(Model, Data, ITER, status, thinning, acceptance,
+                  DEV, liv, MON, MO0, thinned)
     stopTime = proc.time()
     elapsedTime = stopTime - startTime
     cat("\n")
@@ -46,6 +47,17 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
     startTime = proc.time()
     fit <- harm(Model, Data, ITER, status, thinning, acceptance,
                 DEV, liv, MON, MO0, thinned)
+    stopTime = proc.time()
+    elapsedTime = stopTime - startTime
+    cat("\n")
+    cat("It took ",round(elapsedTime[3],2)," secs for the run to finish.\n", sep="")
+  } else if(algo == "sharm") {
+    ##############=============== Hit-and-Run Metropolis
+    method = "SHARM"
+    cat("Algorithm: Steepest Hit-and-Run Metropolis\n\n")
+    startTime = proc.time()
+    fit <- sharm(Model, Data, ITER, status, thinning, acceptance,
+                 DEV, h, liv, MON, MO0, thinned)
     stopTime = proc.time()
     elapsedTime = stopTime - startTime
     cat("\n")
@@ -88,14 +100,14 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
   Result    <- list(posterior=posterior, LP=logPost, DIC=DIC,
                     acc=accRate, ESS=ESS, PSRF=GD$psrf[,1],
                     MPSRF=GD$mpsrf, mcmc.info=mcmc.info)
-  class(Result) <- "bayes"
+  class(Result) <- "YABS"
   return(Result)
 }
 
 '%!in%' <- function(x,y){ !('%in%'(x,y)) }
 
 #### Summary Method
-summary.bayes <- function(oop) {
+summary.YABS <- function(oop) {
   ### Header
   cat("emcmc output generated with ", oop$mcmc.info$algorithm," algorithm.\n",sep="")
   cat("Estimates based on 1 chain of ", oop$mcmc.info$n.iter," iterations,\n",sep="")
@@ -153,7 +165,7 @@ summary.bayes <- function(oop) {
 }
 
 #### Print Method
-print.bayes <- function(oop) {
+print.YABS <- function(oop) {
   ### Header
   cat("emcmc output generated with ", oop$mcmc.info$algorithm," algorithm.\n",sep="")
   cat("MCMC ran for ",sprintf("%.3f",oop$mcmc.info$elapsed.mins[1])," minutes.\n\n",sep="")

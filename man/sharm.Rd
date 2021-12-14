@@ -1,11 +1,11 @@
-\name{harmwg}
-\alias{harmwg}
-\title{Hit-and-Run Metropolis-Within Gibbs Sampler}
+\name{sharm}
+\alias{sharm}
+\title{Steepest Hit-and-Run Metropolis Sampler}
 \description{
-Internal function. Samples new values from the logposterior of the user provided model using the Hit-and-Run Metropolis-Within Gibbs MCMC algorithm.
+Internal function. Samples new values from the logposterior of the user provided model using the Steepest Hit-and-Run Metropolis MCMC algorithm.
 }
 \usage{
-harmwg(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, LIV, Mon, Mo0, thinned)
+sharm(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, h, LIV, Mon, Mo0, thinned)
 }
 \arguments{
    \item{Model}{The user provided model.}
@@ -15,6 +15,7 @@ harmwg(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, LIV, Mon, Mo0
    \item{Thinning}{Thinning rate. Must be a positive integer.}
    \item{Acceptance}{The initial acceptance rate.}
    \item{Dev}{The (empty) matrix of deviances.}
+   \item{h}{The interval of numeric differencing.}
    \item{LIV}{The length of initial values (i.e., the number of parameters).}
    \item{Mon}{The (empty) matrix of variables/parameters to be be monitored (other than the model's parameters).}
    \item{Mo0}{A list with the output of Model for the Initial Values.}

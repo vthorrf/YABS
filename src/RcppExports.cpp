@@ -11,9 +11,9 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// mcmcmwg
-SEXP mcmcmwg(Function Model, List Data, int Iterations, int Status, int Thinning, double Acceptance, NumericMatrix Dev, int LIV, NumericMatrix Mon, List Mo0, NumericMatrix thinned);
-RcppExport SEXP _YABS_mcmcmwg(SEXP ModelSEXP, SEXP DataSEXP, SEXP IterationsSEXP, SEXP StatusSEXP, SEXP ThinningSEXP, SEXP AcceptanceSEXP, SEXP DevSEXP, SEXP LIVSEXP, SEXP MonSEXP, SEXP Mo0SEXP, SEXP thinnedSEXP) {
+// harmwg
+SEXP harmwg(Function Model, List Data, int Iterations, int Status, int Thinning, double Acceptance, NumericMatrix Dev, int LIV, NumericMatrix Mon, List Mo0, NumericMatrix thinned);
+RcppExport SEXP _YABS_harmwg(SEXP ModelSEXP, SEXP DataSEXP, SEXP IterationsSEXP, SEXP StatusSEXP, SEXP ThinningSEXP, SEXP AcceptanceSEXP, SEXP DevSEXP, SEXP LIVSEXP, SEXP MonSEXP, SEXP Mo0SEXP, SEXP thinnedSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -28,7 +28,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericMatrix >::type Mon(MonSEXP);
     Rcpp::traits::input_parameter< List >::type Mo0(Mo0SEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type thinned(thinnedSEXP);
-    rcpp_result_gen = Rcpp::wrap(mcmcmwg(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, LIV, Mon, Mo0, thinned));
+    rcpp_result_gen = Rcpp::wrap(harmwg(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, LIV, Mon, Mo0, thinned));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -50,6 +50,28 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< List >::type Mo0(Mo0SEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type thinned(thinnedSEXP);
     rcpp_result_gen = Rcpp::wrap(harm(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, LIV, Mon, Mo0, thinned));
+    return rcpp_result_gen;
+END_RCPP
+}
+// sharm
+SEXP sharm(Function Model, List Data, int Iterations, int Status, int Thinning, double Acceptance, NumericMatrix Dev, double h, int LIV, NumericMatrix Mon, List Mo0, NumericMatrix thinned);
+RcppExport SEXP _YABS_sharm(SEXP ModelSEXP, SEXP DataSEXP, SEXP IterationsSEXP, SEXP StatusSEXP, SEXP ThinningSEXP, SEXP AcceptanceSEXP, SEXP DevSEXP, SEXP hSEXP, SEXP LIVSEXP, SEXP MonSEXP, SEXP Mo0SEXP, SEXP thinnedSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Function >::type Model(ModelSEXP);
+    Rcpp::traits::input_parameter< List >::type Data(DataSEXP);
+    Rcpp::traits::input_parameter< int >::type Iterations(IterationsSEXP);
+    Rcpp::traits::input_parameter< int >::type Status(StatusSEXP);
+    Rcpp::traits::input_parameter< int >::type Thinning(ThinningSEXP);
+    Rcpp::traits::input_parameter< double >::type Acceptance(AcceptanceSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type Dev(DevSEXP);
+    Rcpp::traits::input_parameter< double >::type h(hSEXP);
+    Rcpp::traits::input_parameter< int >::type LIV(LIVSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type Mon(MonSEXP);
+    Rcpp::traits::input_parameter< List >::type Mo0(Mo0SEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type thinned(thinnedSEXP);
+    rcpp_result_gen = Rcpp::wrap(sharm(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, h, LIV, Mon, Mo0, thinned));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -78,8 +100,9 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_YABS_mcmcmwg", (DL_FUNC) &_YABS_mcmcmwg, 11},
+    {"_YABS_harmwg", (DL_FUNC) &_YABS_harmwg, 11},
     {"_YABS_harm", (DL_FUNC) &_YABS_harm, 11},
+    {"_YABS_sharm", (DL_FUNC) &_YABS_sharm, 12},
     {"_YABS_nutsda", (DL_FUNC) &_YABS_nutsda, 13},
     {NULL, NULL, 0}
 };
