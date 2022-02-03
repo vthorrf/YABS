@@ -42,7 +42,6 @@ arma::mat mvrnormArma(int n, arma::vec mu, arma::mat sigma) {
 double FindReasonableEpsilon(NumericVector par, Function Model, List Data, double h) {
   // Initialize
   double        epsilon = 1.0;
-  //NumericVector r     = as<NumericVector>(rnorm(par.length(), 0, 1));
   NumericVector mu(par.length());
   arma::mat     Sigma = Rcpp::as<arma::mat>(NumericMatrix::diag(par.length(), 1));
   NumericVector r = as<NumericVector>(wrap(mvrnormArma(1, mu, Sigma)));
@@ -206,7 +205,6 @@ Rcpp::NumericVector HARproposal(NumericVector par) {
   NumericVector mu(par.length());
   arma::mat     Sigma = Rcpp::as<arma::mat>(NumericMatrix::diag(par.length(), 1));
   Rcpp::NumericVector theta = as<NumericVector>(wrap(mvrnormArma(1, mu, Sigma)));
-  // Rcpp::NumericVector theta = rnorm(par.length());
   Rcpp::NumericVector d = theta / sqrt(sum(theta * theta));
   double              u = as<double>(runif(1));
   Rcpp::NumericVector prop = par + (u * d);
@@ -214,17 +212,12 @@ Rcpp::NumericVector HARproposal(NumericVector par) {
   return prop;
 }
 
-Rcpp::NumericVector SHARproposal(NumericVector par, double h, List Data, Function Model) {
+Rcpp::NumericVector SHARproposal(NumericVector par, double h, List Data, Function Model, double max_d) {
   
-  NumericVector mu(par.length());
-  arma::mat     Sigma = Rcpp::as<arma::mat>(NumericMatrix::diag(par.length(), 1));
-  Rcpp::NumericVector theta = as<NumericVector>(wrap(mvrnormArma(1, mu, Sigma)));
-  Rcpp::NumericVector d = theta / sqrt(sum(theta * theta));
+  Rcpp::NumericVector d = runif(par.length(), 0, max_d);
   Rcpp::NumericVector gr = grad(Model, Data, par, h);
-  //Rcpp::NumericVector newgr = gr/max(abs(gr));
   Rcpp::NumericVector newgr = gr / sqrt(sum(gr * gr));
-  //Rcpp::NumericVector prop = par + (pow(10.0,-5.0) * abs(d) * newgr);
-  Rcpp::NumericVector prop = par + (abs(d) * newgr);
+  Rcpp::NumericVector prop = HARproposal(par + (d * newgr));
   
   return prop;
 }
@@ -259,7 +252,7 @@ SEXP harmwg(Function Model, List Data, int Iterations, int Status,
     }
     // Random-Scan Componentwise Estimation
     Rcpp::NumericVector u = runif(LIV),      // Acceptance threshold for each parameter
-      z = rnorm(LIV);      // New Proposed value
+                        z = rnorm(LIV);      // New Proposed value
     Rcpp::IntegerVector LIVseq = Rcpp::Range(0, LIV - 1), // Indexes to sample
       s = Rcpp::RcppArmadillo::sample(LIVseq, LIV, // Sample of indexes
                                       false, NumericVector::create());
@@ -363,6 +356,8 @@ SEXP sharm(Function Model, List Data, int Iterations, int Status,
   double alpha = 0;
   Rcpp::List Mo1 = clone(Mo0);
   RNGScope scope;
+  double max_d = FindReasonableEpsilon(Mo0["parm"], Model, Data, h);
+
   
   // Run MCMC algorithm
   for (int iter = 0; iter < Iterations; iter++) {
@@ -381,7 +376,7 @@ SEXP sharm(Function Model, List Data, int Iterations, int Status,
     }
     // Propose new values
     Rcpp::List          Mo0_ = clone(Mo0);
-    Rcpp::NumericVector prop = SHARproposal(Mo0_["parm"], h, Data, Model);
+    Rcpp::NumericVector prop = SHARproposal(Mo0_["parm"], h, Data, Model, max_d);
     Rcpp::List          Mo1 = Model(prop, Data);
     // Accept/Reject
     double u = as<double>(runif(1));
