@@ -221,8 +221,10 @@ Rcpp::NumericVector SHARproposal(NumericVector par, double h, List Data, Functio
   Rcpp::NumericVector theta = as<NumericVector>(wrap(mvrnormArma(1, mu, Sigma)));
   Rcpp::NumericVector d = theta / sqrt(sum(theta * theta));
   Rcpp::NumericVector gr = grad(Model, Data, par, h);
-  Rcpp::NumericVector newgr = gr/max(abs(gr));
-  Rcpp::NumericVector prop = par + (pow(10.0,-5.0) * d * newgr);
+  //Rcpp::NumericVector newgr = gr/max(abs(gr));
+  Rcpp::NumericVector newgr = gr / sqrt(sum(gr * gr));
+  //Rcpp::NumericVector prop = par + (pow(10.0,-5.0) * abs(d) * newgr);
+  Rcpp::NumericVector prop = par + (abs(d) * newgr);
   
   return prop;
 }

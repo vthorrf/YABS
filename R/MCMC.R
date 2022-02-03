@@ -109,7 +109,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
 #### Summary Method
 summary.YABS <- function(oop) {
   ### Header
-  cat("emcmc output generated with ", oop$mcmc.info$algorithm," algorithm.\n",sep="")
+  cat("YABS output generated with ", oop$mcmc.info$algorithm," algorithm.\n",sep="")
   cat("Estimates based on 1 chain of ", oop$mcmc.info$n.iter," iterations,\n",sep="")
   cat("burn-in = ", oop$mcmc.info$n.burnin, " iterations and thin rate = ",
       oop$mcmc.info$n.thin,",\n",sep="")
@@ -167,7 +167,7 @@ summary.YABS <- function(oop) {
 #### Print Method
 print.YABS <- function(oop) {
   ### Header
-  cat("emcmc output generated with ", oop$mcmc.info$algorithm," algorithm.\n",sep="")
+  cat("YABS output generated with ", oop$mcmc.info$algorithm," algorithm.\n",sep="")
   cat("MCMC ran for ",sprintf("%.3f",oop$mcmc.info$elapsed.mins[1])," minutes.\n\n",sep="")
   
   ### Summary table
