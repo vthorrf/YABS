@@ -1,6 +1,6 @@
 MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
                  burnin=NULL, status=NULL, thinning=NULL,
-                 algo=c("harmwg","harm","nutsda"), M_adap=NULL) {
+                 algo=c("harmwg","harm","sharm")) {
   ### Initial settings
   if(length(algo) > 1)        algo           <- "harmwg"
   if(is.null(Initial.Values)) Initial.Values <- Data$PGF(Data)
@@ -11,11 +11,8 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
   if(is.null(status))         status         <- round(iterations/10,0)
   if(status <= 0)             status         <- round(iterations/10,0)
   if(status == 0)             status         <- 1
-  if(is.null(M_adap))         M_adap         <- 0
-  if(M_adap < 0)              M_adap         <- 0
   status <- round(status,0)
-  h <- 1e-6; MB <- M_adap + burnin
-  ITER   <- iterations + MB
+  h <- 1e-6; ITER   <- iterations + burnin
   if(is.null(thinning))       thinning       <- 1
   if(thinning <= 0)           thinning       <- 1
   liv        <- length(Initial.Values)
@@ -52,24 +49,12 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
     cat("\n")
     cat("It took ",round(elapsedTime[3],2)," secs for the run to finish.\n", sep="")
   } else if(algo == "sharm") {
-    ##############=============== Hit-and-Run Metropolis
+    ##############=============== Steepest Hit-and-Run Metropolis
     method = "SHARM"
     cat("Algorithm: Steepest Hit-and-Run Metropolis\n\n")
     startTime = proc.time()
     fit <- sharm(Model, Data, ITER, status, thinning, acceptance,
                  DEV, h, liv, MON, MO0, thinned)
-    stopTime = proc.time()
-    elapsedTime = stopTime - startTime
-    cat("\n")
-    cat("It took ",round(elapsedTime[3],2)," secs for the run to finish.\n", sep="")
-  } else if(algo == "nutsda") {
-    ##############=============== No-U-Turn Sampler with Dual Averaging
-    acceptance <- .6
-    method = "NUTS-DSA"
-    cat("Algorithm: No-U-Turn Sampler with Dual Averaging\n\n")
-    startTime = proc.time()
-    fit <- nutsda(Model, Data, ITER, status, h, thinning, acceptance,
-                  DEV, MB, liv, MON, MO0, thinned)
     stopTime = proc.time()
     elapsedTime = stopTime - startTime
     cat("\n")

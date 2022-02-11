@@ -78,128 +78,6 @@ double FindReasonableEpsilon(NumericVector par, Function Model, List Data, doubl
   return epsilon;
 }
 
-List BuildTree(NumericVector theta, NumericVector r, double u, int v,
-               int j, double epsilon, NumericVector theta_naught,
-               double rn_m, Function Model, List Data, double h) {
-  double delta_max = 1000.0;
-  if (j == 0) {
-    NumericMatrix LF = as<NumericMatrix>(Leapfrog(theta, r, ((double)v) * epsilon,
-                                                  Model, Data, h));
-    NumericVector theta_tilt = as<NumericVector>(wrap(LF(_, 0)));
-    NumericVector r_tilt = as<NumericVector>(wrap(LF(_, 1)));
-    double        rt_m = sum(r_tilt * r_tilt);
-    int n_tilt;
-    if (u <= exp(as<double>(as<List>(Model(theta_tilt, Data))["LP"]) - (0.5 * rt_m))) {
-      n_tilt = 1;
-    }
-    else {
-      n_tilt = 0;
-    };
-    int s_tilt;
-    if (u < exp(delta_max + as<double>(as<List>(Model(theta_tilt, Data))["LP"]) - (0.5 * rt_m))) {
-      s_tilt = 1;
-    }
-    else {
-      s_tilt = 0;
-    };
-    double LPmin = as<double>(as<List>(Model(theta_tilt, Data))["LP"]) - (0.5 * rt_m) -
-      as<double>(as<List>(Model(theta_naught, Data))["LP"]) - (0.5 * rn_m);
-    double alpha_tilt = std::min(1.0, exp(LPmin));
-    int    n_alpha = 1;
-    
-    return wrap(Rcpp::List::create(Rcpp::Named("theta_minus") = theta_tilt,
-                                   Rcpp::Named("r_minus") = r_tilt,
-                                   Rcpp::Named("theta_plus") = theta_tilt,
-                                   Rcpp::Named("r_plus") = r_tilt,
-                                   Rcpp::Named("theta_tilt") = theta_tilt,
-                                   Rcpp::Named("n_tilt") = n_tilt,
-                                   Rcpp::Named("s_tilt") = s_tilt,
-                                   Rcpp::Named("alpha_tilt") = alpha_tilt,
-                                   Rcpp::Named("n_alpha") = n_alpha));
-  }
-  else {
-    List BT = BuildTree(theta, r, u, v, j - 1, epsilon, theta_naught, rn_m, Model, Data, h);
-    NumericVector theta_minus = BT["theta_minus"];
-    NumericVector r_minus = BT["r_minus"];
-    NumericVector theta_plus = BT["theta_plus"];
-    NumericVector r_plus = BT["r_plus"];
-    NumericVector theta_tilt = BT["theta_tilt"];
-    int n_tilt = BT["n_tilt"];
-    int s_tilt = BT["s_tilt"];
-    double alpha_tilt = BT["alpha_tilt"];
-    int    n_alpha = BT["n_alpha"];
-    if (s_tilt == 1) {
-      NumericVector theta_Dtilt;
-      int n_Dtilt;
-      int s_Dtilt;
-      double alpha_Dtilt;
-      int    n_Dalpha;
-      if (v == -1) {
-        List BT = BuildTree(theta_minus, r_minus, u, v, j - 1, epsilon, theta_naught,
-                            rn_m, Model, Data, h);
-        NumericVector theta_minus = BT["theta_minus"];
-        NumericVector r_minus = BT["r_minus"];
-        NumericVector theta_Dtilt = BT["theta_tilt"];
-        n_Dtilt = BT["n_tilt"];
-        s_Dtilt = BT["s_tilt"];
-        alpha_Dtilt = BT["alpha_tilt"];
-        n_Dalpha = BT["n_alpha"];
-      }
-      else {
-        List BT = BuildTree(theta_plus, r_plus, u, v, j - 1, epsilon, theta_naught,
-                            rn_m, Model, Data, h);
-        NumericVector theta_plus = BT["theta_plus"];
-        NumericVector r_plus = BT["r_plus"];
-        NumericVector theta_Dtilt = BT["theta_tilt"];
-        n_Dtilt = BT["n_tilt"];
-        s_Dtilt = BT["s_tilt"];
-        alpha_Dtilt = BT["alpha_tilt"];
-        n_Dalpha = BT["n_alpha"];
-      }
-      double prob = ((double)n_Dtilt) / (((double)n_tilt) + ((double)n_Dtilt));
-      double coin = as<double>(runif(1));
-      if (prob > coin) {
-        theta_tilt = theta_Dtilt;
-      }
-      alpha_tilt += alpha_Dtilt;//alpha_tilt + alpha_Dtilt;
-      n_alpha += n_Dalpha;//n_alpha + n_Dalpha;
-      int rule1;
-      if (sum((theta_plus - theta_minus) * r_minus) >= 0.0) {
-        rule1 = 1;
-      }
-      else {
-        rule1 = 0;
-      }
-      int rule2;
-      if (sum((theta_plus - theta_minus) * r_plus) >= 0.0) {
-        rule2 = 1;
-      }
-      else {
-        rule2 = 0;
-      }
-      int rule;
-      if ((rule1 + rule2) == 2) {
-        rule = 1;
-      }
-      else {
-        rule = 0;
-      }
-      s_tilt = s_Dtilt * rule;
-      n_tilt += n_Dtilt;//n_tilt + n_Dtilt;
-    }
-    
-    return wrap(Rcpp::List::create(Rcpp::Named("theta_minus") = theta_minus,
-                                   Rcpp::Named("r_minus") = r_minus,
-                                   Rcpp::Named("theta_plus") = theta_plus,
-                                   Rcpp::Named("r_plus") = r_plus,
-                                   Rcpp::Named("theta_tilt") = theta_tilt,
-                                   Rcpp::Named("n_tilt") = n_tilt,
-                                   Rcpp::Named("s_tilt") = s_tilt,
-                                   Rcpp::Named("alpha_tilt") = alpha_tilt,
-                                   Rcpp::Named("n_alpha") = n_alpha));
-  }
-}
-
 Rcpp::NumericVector HARproposal(NumericVector par) {
   
   NumericVector mu(par.length());
@@ -216,7 +94,8 @@ Rcpp::NumericVector SHARproposal(NumericVector par, double h, List Data, Functio
   
   Rcpp::NumericVector d = runif(par.length(), 0, max_d);
   Rcpp::NumericVector gr = grad(Model, Data, par, h);
-  Rcpp::NumericVector newgr = gr / sqrt(sum(gr * gr));
+  //Rcpp::NumericVector newgr = gr / sqrt(sum(gr * gr));
+  Rcpp::NumericVector newgr = gr / max(abs(gr));
   Rcpp::NumericVector prop = HARproposal(par + (d * newgr));
   
   return prop;
@@ -357,7 +236,6 @@ SEXP sharm(Function Model, List Data, int Iterations, int Status,
   Rcpp::List Mo1 = clone(Mo0);
   RNGScope scope;
   double max_d = FindReasonableEpsilon(Mo0["parm"], Model, Data, h);
-
   
   // Run MCMC algorithm
   for (int iter = 0; iter < Iterations; iter++) {
@@ -375,12 +253,11 @@ SEXP sharm(Function Model, List Data, int Iterations, int Status,
       Mon(t_iter, _) = as<Rcpp::NumericVector>(Mo0["Monitor"]);
     }
     // Propose new values
-    Rcpp::List          Mo0_ = clone(Mo0);
-    Rcpp::NumericVector prop = SHARproposal(Mo0_["parm"], h, Data, Model, max_d);
+    Rcpp::NumericVector prop = SHARproposal(Mo0["parm"], h, Data, Model, max_d);
     Rcpp::List          Mo1 = Model(prop, Data);
     // Accept/Reject
     double u = as<double>(runif(1));
-    double LP0 = Mo0_["LP"];
+    double LP0 = Mo0["LP"];
     double LP1 = Mo1["LP"];
     alpha = exp(LP1 - LP0);
     if (u < alpha) {
@@ -391,158 +268,6 @@ SEXP sharm(Function Model, List Data, int Iterations, int Status,
       thinned(t_iter, _) = as<Rcpp::NumericVector>(Mo0["parm"]);
       Dev(t_iter, _) = as<Rcpp::NumericVector>(Mo0["Dev"]);
       Mon(t_iter, _) = as<Rcpp::NumericVector>(Mo0["Monitor"]);
-    }
-  }
-  
-  // Final Result
-  return wrap(Rcpp::List::create(Rcpp::Named("Acceptance") = Acceptance,
-                                 Rcpp::Named("Dev") = Dev,
-                                 Rcpp::Named("Mon") = Mon,
-                                 Rcpp::Named("thinned") = thinned));
-}
-
-// [[Rcpp::export]]
-SEXP nutsda(Function Model, List Data, int Iterations, int Status, double h,
-            int Thinning, double Acceptance, NumericMatrix Dev, int M_adap,
-            int LIV, NumericMatrix Mon, List Mo0, NumericMatrix thinned) {
-  
-  // Initial settings
-  int    t_iter = 0;
-  double epsilon_0 = FindReasonableEpsilon(Mo0["parm"], Model, Data, h);
-  NumericVector epsilon_m(Iterations);
-  epsilon_m[0] = epsilon_0;
-  double mu = log(10 * epsilon_0);
-  NumericVector epsilon_bar(Iterations);
-  epsilon_bar[0] = 1.0;
-  NumericVector H_bar(Iterations);
-  H_bar[0] = 0.0;
-  double gamma = 0.05;
-  double t_0 = 10.0;
-  double kappa = .75;
-  NumericVector par_0 = as<NumericVector>(Mo0["parm"]);
-  NumericVector expectation(par_0.length());
-  arma::mat     Sigma = Rcpp::as<arma::mat>(NumericMatrix::diag(par_0.length(), 1));
-  Rcpp::List Mo1 = clone(Mo0);
-  RNGScope scope;
-  
-  // Run MCMC algorithm
-  for (int iter = 0; iter < Iterations; iter++) {
-    // Print Status
-    if ((iter + 1) % Status == 0) {
-      Rcpp::Rcout << "Iteration: " << iter + 1 <<
-        ",   Proposal: Multivariate,   LP: " <<
-          floor(as<double>(Mo1["LP"]) * 100) / 100 << std::endl;
-    }
-    // Save Thinned Samples
-    if ((iter + 1) % Thinning == 0) {
-      t_iter = floor((iter) / Thinning) + 1;
-      thinned(t_iter, _) = as<Rcpp::NumericVector>(Mo1["parm"]);
-      Dev(t_iter, _) = as<Rcpp::NumericVector>(Mo1["Dev"]);
-      Mon(t_iter, _) = as<Rcpp::NumericVector>(Mo1["Monitor"]);
-    }
-    // Propose new values
-    //NumericVector r_0 = as<NumericVector>(rnorm(par_0.length(), 0, 1));
-    NumericVector r_0 = as<NumericVector>(wrap(mvrnormArma(1, expectation, Sigma)));
-    // Build Tree for proposal
-    double        rn_m = sum(r_0 * r_0);
-    double        m_1 = as<double>(Mo1["LP"]);
-    double        u = as<double>(runif(1)) * exp(m_1 - (.5 * rn_m));
-    NumericVector theta_tilt;
-    NumericVector theta_minus = Mo1["parm"];
-    NumericVector theta_plus = Mo1["parm"];
-    NumericVector r_minus = r_0;
-    NumericVector r_plus = r_0;
-    int j = 0;
-    NumericVector theta_m = Mo1["parm"];
-    int n = 1;
-    int s = 1;
-    int n_tilt = 1;
-    int s_tilt = 1;
-    double alpha;
-    int    n_alpha;
-    while (s == 1) {
-      double coin = as<double>(runif(1));
-      int v;
-      if (coin >= .5) {
-        v = 1;
-      }
-      else {
-        v = -1;
-      }
-      List BT;
-      if (v == -1) {
-        BT = BuildTree(theta_minus, r_minus, u, v, j, epsilon_m[iter],
-                       Mo1["parm"], rn_m, Model, Data, h);
-        theta_minus = BT["theta_minus"];
-        r_minus = BT["r_minus"];
-        theta_tilt = BT["theta_tilt"];
-        n_tilt = BT["n_tilt"];
-        s_tilt = BT["s_tilt"];
-        alpha = BT["alpha_tilt"];
-        n_alpha = BT["n_alpha"];
-      }
-      else {
-        BT = BuildTree(theta_plus, r_plus, u, v, j, epsilon_m[iter],
-                       Mo1["parm"], rn_m, Model, Data, h);
-        theta_plus = BT["theta_plus"];
-        r_plus = BT["r_plus"];
-        theta_tilt = BT["theta_tilt"];
-        n_tilt = BT["n_tilt"];
-        s_tilt = BT["s_tilt"];
-        alpha = BT["alpha_tilt"];
-        n_alpha = BT["n_alpha"];
-      }
-      if (s_tilt == 1) {
-        double prob = std::min<double>(1.0, ((double)n_tilt / (double)n));
-        double dec = as<double>(runif(1));
-        if (prob > dec) {
-          theta_m = theta_tilt;
-        }
-      }
-      n += n_tilt;
-      int rule1;
-      if (sum((theta_plus - theta_minus) * r_minus) >= 0.0) {
-        rule1 = 1;
-      }
-      else {
-        rule1 = 0;
-      }
-      int rule2;
-      if (sum((theta_plus - theta_minus) * r_plus) >= 0.0) {
-        rule2 = 1;
-      }
-      else {
-        rule2 = 0;
-      }
-      int rule;
-      if ((rule1 + rule2) == 2) {
-        rule = 1;
-      }
-      else {
-        rule = 0;
-      }
-      s = s_tilt * rule;
-      j += 1;
-    }
-    // Accept/Reject and Update
-    Mo1 = Model(theta_m, Data);
-    if (iter > 0) {
-      if (iter <= M_adap) {
-        H_bar[iter] = ((1.0 - (1.0 / (((double)iter) + t_0))) * H_bar[iter - 1]) +
-          ((1.0 / (((double)iter) + t_0)) * (Acceptance - (alpha / ((double)n_alpha))));
-        epsilon_m[iter] = exp(mu - (std::sqrt((double)iter) / gamma) * H_bar[iter]);
-        epsilon_bar[iter] = exp(pow((double)iter, -kappa) * log(epsilon_m[iter]) +
-          (1 - pow((double)iter, -kappa)) * log(epsilon_bar[iter - 1]));
-      }
-      else {
-        epsilon_m[iter] = epsilon_m[iter - 1];
-        epsilon_bar[iter] = epsilon_m[iter];
-      }
-    }
-    if ((iter + 1) % Thinning == 0) {
-      thinned(t_iter, _) = as<Rcpp::NumericVector>(Mo1["parm"]);
-      Dev(t_iter, _) = as<Rcpp::NumericVector>(Mo1["Dev"]);
-      Mon(t_iter, _) = as<Rcpp::NumericVector>(Mo1["Monitor"]);
     }
   }
   

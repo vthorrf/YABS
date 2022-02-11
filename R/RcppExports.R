@@ -13,7 +13,3 @@ sharm <- function(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, h,
     .Call(`_YABS_sharm`, Model, Data, Iterations, Status, Thinning, Acceptance, Dev, h, LIV, Mon, Mo0, thinned)
 }
 
-nutsda <- function(Model, Data, Iterations, Status, h, Thinning, Acceptance, Dev, M_adap, LIV, Mon, Mo0, thinned) {
-    .Call(`_YABS_nutsda`, Model, Data, Iterations, Status, h, Thinning, Acceptance, Dev, M_adap, LIV, Mon, Mo0, thinned)
-}
-
