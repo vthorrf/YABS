@@ -5,7 +5,7 @@
 The `MCMC` function is a basic user interface for calling the samplers provided with the YABS package. The user provides a Model, a Data list, and Initial values (optional if PGF is provided). The function compiles the information and sends it to internal samplers, written in C++. The results are consolidated and summarized to be output as an object of class YABS.
 }
 \usage{
-MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL, status=NULL, thinning=NULL, algo=c("harmwg","harm","sharm"))
+MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL, status=NULL, thinning=NULL, algo=c("harmwg","harm","gcharm"))
 }
 \arguments{
    \item{Model}{The user provided model. It should always output a list containing the following named objects: (i) LP, the logposterior; (ii) Dev, the deviance; (iii) Monitor, a single value or a vector of values to be monitored; (iv) yhat, values simulated from the posterior; and (v) parm, the value or vector with the parameters.}
@@ -15,7 +15,7 @@ MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL, status=NULL
    \item{burnin}{The number of initial iterations to be discarded (excluding thinning).}
    \item{status}{Indicates how often, in iterations, the user would like the status printed to the screen. Should be an integer between 1 and the number of iterations (including burning and thinning).}
    \item{thinning}{Indicates that every nth iteration will be retained, while the other iterations are discarded. Must be a positive integer.}
-   \item{algo}{The MCMC algorithm to be used. Currently, the following are implemented: (i) "harmwg", Hit-and-Run Metropolis-Within-Gibbs; (ii) "harm", Hit-and-Run Metropolis; and (iii) "sharm", Steepest Hit-and-Run Metropolis. If no (or more than one) algorithm is selected, defaults to harmwg.}
+   \item{algo}{The MCMC algorithm to be used. Currently, the following are implemented: (i) "harmwg", Hit-and-Run Metropolis-Within-Gibbs; (ii) "harm", Hit-and-Run Metropolis; and (iii) "gcharm", Gradient-Corrected Hit-and-Run Metropolis. If no (or more than one) algorithm is selected, defaults to harmwg.}
 }
 \value{
 A list of class YABS containing:
@@ -86,7 +86,7 @@ fit1 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
 fit2 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
              burnin=100, status=110, thinning=1, algo="harm")
 fit3 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
-             burnin=100, status=110, thinning=1, algo="sharm")
+             burnin=100, status=110, thinning=1, algo="gcharm")
 plot.ts(fit1$posterior)
 plot.ts(fit2$posterior)
 plot.ts(fit3$posterior)

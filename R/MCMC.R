@@ -1,6 +1,6 @@
 MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
                  burnin=NULL, status=NULL, thinning=NULL,
-                 algo=c("harmwg","harm","sharm")) {
+                 algo=c("harmwg","harm","gcharm")) {
   ### Initial settings
   if(length(algo) > 1)        algo           <- "harmwg"
   if(is.null(Initial.Values)) Initial.Values <- Data$PGF(Data)
@@ -49,12 +49,12 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
     cat("\n")
     cat("It took ",round(elapsedTime[3],2)," secs for the run to finish.\n", sep="")
   } else if(algo == "sharm") {
-    ##############=============== Steepest Hit-and-Run Metropolis
-    method = "SHARM"
-    cat("Algorithm: Steepest Hit-and-Run Metropolis\n\n")
+    ##############=============== Gradient-Corrected Hit-and-Run Metropolis
+    method = "GC-HARM"
+    cat("Algorithm: Gradient-Corrected Hit-and-Run Metropolis\n\n")
     startTime = proc.time()
-    fit <- sharm(Model, Data, ITER, status, thinning, acceptance,
-                 DEV, h, liv, MON, MO0, thinned)
+    fit <- gcharm(Model, Data, ITER, status, thinning, acceptance,
+                  DEV, h, liv, MON, MO0, thinned)
     stopTime = proc.time()
     elapsedTime = stopTime - startTime
     cat("\n")

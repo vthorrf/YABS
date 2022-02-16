@@ -47,7 +47,7 @@ Rcpp::NumericVector SHARproposal(NumericVector par, double h, List Data, Functio
   Rcpp::NumericVector theta = as<NumericVector>(wrap(mvrnormArma(1, mu, Sigma)));
   Rcpp::NumericVector d = theta / sqrt(sum(theta * theta));
   Rcpp::NumericVector stdgr = gr / sqrt(sum(gr * gr));
-  double              u = as<double>(runif(1));
+  double              u = as<double>(runif(1,0,.5));
   Rcpp::NumericVector prop = par + (u * (stdgr + d));
 
   return prop;
@@ -178,9 +178,9 @@ SEXP harm(Function Model, List Data, int Iterations, int Status,
 }
 
 // [[Rcpp::export]]
-SEXP sharm(Function Model, List Data, int Iterations, int Status,
-           int Thinning, double Acceptance, NumericMatrix Dev, double h,
-           int LIV, NumericMatrix Mon, List Mo0, NumericMatrix thinned) {
+SEXP gcharm(Function Model, List Data, int Iterations, int Status,
+            int Thinning, double Acceptance, NumericMatrix Dev, double h,
+            int LIV, NumericMatrix Mon, List Mo0, NumericMatrix thinned) {
   
   // Initial settings
   int t_iter = 0;

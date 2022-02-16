@@ -1,11 +1,11 @@
-\name{sharm}
-\alias{sharm}
-\title{Steepest Hit-and-Run Metropolis Sampler}
+\name{gcharm}
+\alias{gcharm}
+\title{Gradient-Corrected Hit-and-Run Metropolis Sampler}
 \description{
-Internal function. Samples new values from the logposterior of the user provided model using the Steepest Hit-and-Run Metropolis MCMC algorithm.
+Internal function. Samples new values from the logposterior of the user provided model using the Gradient-Corrected Hit-and-Run Metropolis MCMC algorithm.
 }
 \usage{
-sharm(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, h, LIV, Mon, Mo0, thinned)
+gcharm(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, h, LIV, Mon, Mo0, thinned)
 }
 \arguments{
    \item{Model}{The user provided model.}

@@ -57,9 +57,7 @@ fit1 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
 fit2 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
              burnin=100, status=110, thinning=1, algo="harm")
 fit3 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
-             burnin=100, status=110, thinning=1, algo="sharm")
-#fit4 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
-#             burnin=100, status=110, thinning=1, algo="nutsda")
+             burnin=100, status=110, thinning=1, algo="gcharm")
 plot.ts(fit1$posterior)
 plot.ts(fit2$posterior)
 plot.ts(fit3$posterior)
@@ -111,9 +109,9 @@ UIsamples <- jagsUI::jags(dataList, inits=inits, params, model.file=model,
                           n.chains=nchains, n.adapt=nadapt, n.iter=nsamples,
                           n.burnin=nburnin, n.thin=nthin, DIC=T)
 
-## Inspect and diagnose the run
+## Compare run time
 fit1$mcmc.info$elapsed.mins
 fit2$mcmc.info$elapsed.mins
+fit3$mcmc.info$elapsed.mins
 UIsamples$mcmc.info$elapsed.mins
-fit1
-UIsamples
+

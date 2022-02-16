@@ -9,7 +9,7 @@ harm <- function(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, LIV
     .Call(`_YABS_harm`, Model, Data, Iterations, Status, Thinning, Acceptance, Dev, LIV, Mon, Mo0, thinned)
 }
 
-sharm <- function(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, h, LIV, Mon, Mo0, thinned) {
-    .Call(`_YABS_sharm`, Model, Data, Iterations, Status, Thinning, Acceptance, Dev, h, LIV, Mon, Mo0, thinned)
+gcharm <- function(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, h, LIV, Mon, Mo0, thinned) {
+    .Call(`_YABS_gcharm`, Model, Data, Iterations, Status, Thinning, Acceptance, Dev, h, LIV, Mon, Mo0, thinned)
 }
 

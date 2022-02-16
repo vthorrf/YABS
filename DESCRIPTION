@@ -1,17 +1,21 @@
 Package: YABS
 Type: Package
 Title: YABS: Yet Another Bayesian Sampler
-Version: 0.1.4
-Date: 2022-02-10
-Author: Vithor Rosa Franco
-Maintainer: Vithor Rosa Franco <vithorfranco@gmail.com>
+Version: 0.1.5
+Date: 2022-02-16
+Authors@R: c(person("Vithor", "Franco", email = "vithorfranco@gmail.com", role = c("aut", "cre")),
+             person("Donald", "Williams", email = "drwwilliams@ucdavis.edu", role = "aut"))
 Description: Provides general purpose tools for helping users to implement Bayesian
              models using R functions. Currently, Hit-and-Run Metropolis-within-Gibbs,
-             Hit-and-Run Metropolis, and Steepest Hit-and-Run Metropolis are the MCMC
-             algorithms implemented. Other MCMC algorithms will be implemented in the future.
+             Hit-and-Run Metropolis, and Gradient-Corrected Hit-and-Run Metropolis are the MCMC
+             algorithms implemented. Other MCMC algorithms may be implemented in the future.
 License: GPL-3
 Encoding: UTF-8
 RoxygenNote: 7.1.1
 Imports: Rcpp (>= 1.0.7)
 Depends: coda (>= 0.19-4)
-LinkingTo: Rcpp, RcppArmadillo
+Suggests: rstan,
+          jagsUI
+LinkingTo: Rcpp,
+           RcppArmadillo
+BugReports: https://github.com/vthorrf/YABS/issues
