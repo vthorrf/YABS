@@ -21,61 +21,11 @@ Rcpp::NumericVector grad(Function Model, List Data, NumericVector par, double h)
   return out;
 }
 
-NumericMatrix Leapfrog(NumericVector par, NumericVector r, double epsilon,
-                       Function Model, List Data, double h) {
-  NumericVector r_hat = r + (epsilon / 2) * grad(Model, Data, par, h);
-  NumericVector theta_hat = par + (epsilon * r_hat);
-  NumericVector r_tilt = r_hat + (epsilon / 2) * grad(Model, Data, theta_hat, h);
-  NumericMatrix Result(par.length(), 2);
-  Result(_, 0) = theta_hat;
-  Result(_, 1) = r_tilt;
-  return Result;
-}
-
 arma::mat mvrnormArma(int n, arma::vec mu, arma::mat sigma) {
   int ncols = sigma.n_cols;
   arma::mat Y = arma::randn(n, ncols);
   arma::mat m = Y * arma::chol(sigma);
   return m;
-}
-
-double FindReasonableEpsilon(NumericVector par, Function Model, List Data, double h) {
-  // Initialize
-  double        epsilon = 1.0;
-  NumericVector mu(par.length());
-  arma::mat     Sigma = Rcpp::as<arma::mat>(NumericMatrix::diag(par.length(), 1));
-  NumericVector r = as<NumericVector>(wrap(mvrnormArma(1, mu, Sigma)));
-  // Leapfrog step
-  NumericMatrix LF = as<NumericMatrix>(Leapfrog(par, r, epsilon, Model, Data, h));
-  NumericVector theta_tilt = as<NumericVector>(wrap(LF(_, 0)));
-  NumericVector r_tilt = as<NumericVector>(wrap(LF(_, 1)));
-  double        r_m = sum(r * r);
-  double        rt_m = sum(r_tilt * r_tilt);
-  double pU = exp(as<double>(as<List>(Model(theta_tilt, Data))["LP"]) - (.5 * rt_m));
-  double pB = exp(as<double>(as<List>(Model(par, Data))["LP"]) - (.5 * r_m));
-  // Establish the value of a
-  double decision;
-  if ((pU / pB) > .5) {
-    decision = 1.0;
-  }
-  else {
-    decision = 0.0;
-  };
-  double a = 2.0 * decision - 1.0;
-  // Iterate
-  while (pow((pU / pB), a) > pow(2, -a)) {
-    epsilon = pow(2, a) * epsilon;
-    // Leapfrog step
-    LF = as<NumericMatrix>(Leapfrog(par, r, epsilon, Model, Data, h));
-    theta_tilt = as<NumericVector>(wrap(LF(_, 0)));
-    r_tilt = as<NumericVector>(wrap(LF(_, 1)));
-    r_m = sum(r * r);
-    rt_m = sum(r_tilt * r_tilt);
-    pU = exp(as<double>(as<List>(Model(theta_tilt, Data))["LP"]) - (.5 * rt_m));
-    pB = exp(as<double>(as<List>(Model(par, Data))["LP"]) - (.5 * r_m));
-  }
-  
-  return epsilon;
 }
 
 Rcpp::NumericVector HARproposal(NumericVector par) {
@@ -90,14 +40,16 @@ Rcpp::NumericVector HARproposal(NumericVector par) {
   return prop;
 }
 
-Rcpp::NumericVector SHARproposal(NumericVector par, double h, List Data, Function Model, double max_d) {
+Rcpp::NumericVector SHARproposal(NumericVector par, double h, List Data, Function Model, NumericVector gr) {
   
-  Rcpp::NumericVector d = runif(par.length(), 0, max_d);
-  Rcpp::NumericVector gr = grad(Model, Data, par, h);
-  //Rcpp::NumericVector newgr = gr / sqrt(sum(gr * gr));
-  Rcpp::NumericVector newgr = gr / max(abs(gr));
-  Rcpp::NumericVector prop = HARproposal(par + (d * newgr));
-  
+  NumericVector mu(par.length());
+  arma::mat     Sigma = Rcpp::as<arma::mat>(NumericMatrix::diag(par.length(), 1));
+  Rcpp::NumericVector theta = as<NumericVector>(wrap(mvrnormArma(1, mu, Sigma)));
+  Rcpp::NumericVector d = theta / sqrt(sum(theta * theta));
+  Rcpp::NumericVector stdgr = gr / sqrt(sum(gr * gr));
+  double              u = as<double>(runif(1));
+  Rcpp::NumericVector prop = par + (u * (stdgr + d));
+
   return prop;
 }
 
@@ -235,7 +187,8 @@ SEXP sharm(Function Model, List Data, int Iterations, int Status,
   double alpha = 0;
   Rcpp::List Mo1 = clone(Mo0);
   RNGScope scope;
-  double max_d = FindReasonableEpsilon(Mo0["parm"], Model, Data, h);
+  NumericVector prop0 = as<Rcpp::NumericVector>(Mo0["parm"]);
+  NumericVector gr0 = grad(Model, Data, as<Rcpp::NumericVector>(Mo0["parm"]), h);
   
   // Run MCMC algorithm
   for (int iter = 0; iter < Iterations; iter++) {
@@ -245,26 +198,22 @@ SEXP sharm(Function Model, List Data, int Iterations, int Status,
         ",   Proposal: Multivariate,   LP: " <<
           floor(as<double>(Mo0["LP"]) * 100) / 100 << std::endl;
     }
-    // Save Thinned Samples
-    if ((iter + 1) % Thinning == 0) {
-      t_iter = floor((iter) / Thinning) + 1;
-      thinned(t_iter, _) = as<Rcpp::NumericVector>(Mo0["parm"]);
-      Dev(t_iter, _) = as<Rcpp::NumericVector>(Mo0["Dev"]);
-      Mon(t_iter, _) = as<Rcpp::NumericVector>(Mo0["Monitor"]);
-    }
     // Propose new values
-    Rcpp::NumericVector prop = SHARproposal(Mo0["parm"], h, Data, Model, max_d);
-    Rcpp::List          Mo1 = Model(prop, Data);
+    Rcpp::NumericVector prop = SHARproposal(as<Rcpp::NumericVector>(Mo0["parm"]), h, Data, Model, gr0);
+    Rcpp::List Mo1 = Model(prop, Data);
     // Accept/Reject
     double u = as<double>(runif(1));
     double LP0 = Mo0["LP"];
     double LP1 = Mo1["LP"];
     alpha = exp(LP1 - LP0);
     if (u < alpha) {
-      Mo0 = Mo1;
-      Acceptance += 1.0 / LIV;
+        Mo0 = Mo1;
+        gr0 = grad(Model, Data, prop, h);
+        Acceptance += 1.0 / LIV;
     }
+    // Save Thinned Samples
     if ((iter + 1) % Thinning == 0) {
+      t_iter = floor((iter) / Thinning) + 1;
       thinned(t_iter, _) = as<Rcpp::NumericVector>(Mo0["parm"]);
       Dev(t_iter, _) = as<Rcpp::NumericVector>(Mo0["Dev"]);
       Mon(t_iter, _) = as<Rcpp::NumericVector>(Mo0["Monitor"]);
