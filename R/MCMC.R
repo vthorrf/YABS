@@ -48,7 +48,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
     elapsedTime = stopTime - startTime
     cat("\n")
     cat("It took ",round(elapsedTime[3],2)," secs for the run to finish.\n", sep="")
-  } else if(algo == "sharm") {
+  } else if(algo == "gcharm") {
     ##############=============== Gradient-Corrected Hit-and-Run Metropolis
     method = "GC-HARM"
     cat("Algorithm: Gradient-Corrected Hit-and-Run Metropolis\n\n")
