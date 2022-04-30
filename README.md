@@ -7,7 +7,7 @@ This package should be considered experimental at this point of development. The
 
 * Hit-and-Run Metropolis (`algo = "harm"` argument)
 * Hit-and-Run Metropolis-within Gibbs (`algo = "harmwg"` argument)
-* Gradient-Corrected Hit-and-Run Metropolis (`algo = "gcharm"` argument)
+* Barker Hit-and-Run Metropolis (`algo = "barker"` argument)
 
 # Installation #
 

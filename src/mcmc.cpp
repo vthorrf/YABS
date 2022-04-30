@@ -40,18 +40,39 @@ Rcpp::NumericVector HARproposal(NumericVector par) {
   return prop;
 }
 
-Rcpp::NumericVector SHARproposal(NumericVector par, double h, List Data, Function Model, NumericVector gr) {
+Rcpp::NumericVector BHARproposal(NumericVector par, double h, List Data, Function Model, NumericVector gr) {
   
   NumericVector mu(par.length());
   arma::mat     Sigma = Rcpp::as<arma::mat>(NumericMatrix::diag(par.length(), 1));
   Rcpp::NumericVector theta = as<NumericVector>(wrap(mvrnormArma(1, mu, Sigma)));
   Rcpp::NumericVector d = theta / sqrt(sum(theta * theta));
-  Rcpp::NumericVector stdgr = gr / sqrt(sum(gr * gr));
-  double              u = as<double>(runif(1,0,.5));
-  Rcpp::NumericVector prop = par + (u * (stdgr + d));
+  //Rcpp::NumericVector stdgr = gr / sqrt(sum(gr * gr));
+  //double              u = as<double>(runif(1,0,.5));
+  //Rcpp::NumericVector prop = par + (u * (stdgr + d));
+  Rcpp::NumericVector Pr = 1 / (1 + exp(-(d * gr)));
+  Rcpp::NumericVector  u = runif(par.length());
+  Rcpp::NumericVector  B(par.length());
+  for (int iter = 0; iter < par.length(); iter++) {
+      if (u[iter] < Pr[iter]) {
+          B[iter] = 1;
+      }
+      else {
+          B[iter] = -1;
+      }
+  }
+  Rcpp::NumericVector prop = par + (B * d);
 
   return prop;
 }
+
+//double prod(NumericVector par) {
+//    double result = 1;
+//    for (int iter = 0; iter < par.length(); iter++) {
+//        result *= par[iter];
+//    }
+//
+//    return result;
+//}
 
 // ====================================MCMC Algorithms====================================
 
@@ -199,16 +220,19 @@ SEXP gcharm(Function Model, List Data, int Iterations, int Status,
           floor(as<double>(Mo0["LP"]) * 100) / 100 << std::endl;
     }
     // Propose new values
-    Rcpp::NumericVector prop = SHARproposal(as<Rcpp::NumericVector>(Mo0["parm"]), h, Data, Model, gr0);
+    Rcpp::NumericVector prop = BHARproposal(as<Rcpp::NumericVector>(Mo0["parm"]), h, Data, Model, gr0);
     Rcpp::List Mo1 = Model(prop, Data);
     // Accept/Reject
     double u = as<double>(runif(1));
     double LP0 = Mo0["LP"];
     double LP1 = Mo1["LP"];
-    alpha = exp(LP1 - LP0);
+    //NumericVector diffxy = as<Rcpp::NumericVector>(Mo0["parm"]) - prop;
+    //NumericVector diffyx = prop - as<Rcpp::NumericVector>(Mo0["parm"]);
+    //NumericVector gry = grad(Model, Data, prop, h);
+    alpha = exp(LP1 - LP0);// *prod((1 + exp(diffxy * gr0)) / (1 + exp(diffyx * gry)));
     if (u < alpha) {
         Mo0 = Mo1;
-        gr0 = grad(Model, Data, prop, h);
+        gr0 = grad(Model, Data, prop, h); //gry;
         Acceptance += 1.0 / LIV;
     }
     // Save Thinned Samples

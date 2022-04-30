@@ -1,6 +1,6 @@
 MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
                  burnin=NULL, status=NULL, thinning=NULL,
-                 algo=c("harmwg","harm","gcharm")) {
+                 algo=c("harmwg","harm","barker")) {
   ### Initial settings
   if(length(algo) > 1)        algo           <- "harmwg"
   if(is.null(Initial.Values)) Initial.Values <- Data$PGF(Data)
@@ -48,10 +48,10 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
     elapsedTime = stopTime - startTime
     cat("\n")
     cat("It took ",round(elapsedTime[3],2)," secs for the run to finish.\n", sep="")
-  } else if(algo == "gcharm") {
-    ##############=============== Gradient-Corrected Hit-and-Run Metropolis
-    method = "GC-HARM"
-    cat("Algorithm: Gradient-Corrected Hit-and-Run Metropolis\n\n")
+  } else if(algo == "barker") {
+    ##############=============== Barker Hit-and-Run Metropolis
+    method = "Barker-HARM"
+    cat("Algorithm: Barker Hit-and-Run Metropolis\n\n")
     startTime = proc.time()
     fit <- gcharm(Model, Data, ITER, status, thinning, acceptance,
                   DEV, h, liv, MON, MO0, thinned)
@@ -147,6 +147,7 @@ summary.YABS <- function(oop) {
     cat("MPSRF = ",sprintf("%.3f",oop$MPSRF),"\n",sep="")
     cat("MPSRF is the multivariate potential scale reduction factor (at convergence, MPSRF=1).\n")
   }
+  return(stats)
 }
 
 #### Print Method
@@ -188,4 +189,5 @@ print.YABS <- function(oop) {
     cat("Successful convergence based on PSRF (or Rhat) values (all < 1.1).\n")
   } else { cat("**WARNING** PSRF (or Rhat) values indicate convergence failure.\n") }
   cat("\n")
+  return(stats)
 }
