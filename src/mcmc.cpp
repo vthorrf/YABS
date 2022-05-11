@@ -40,7 +40,7 @@ Rcpp::NumericVector HARproposal(NumericVector par) {
   return prop;
 }
 
-Rcpp::NumericVector BHARproposal(NumericVector par, double h, List Data, Function Model, NumericVector gr) {
+Rcpp::NumericVector BHARproposal(NumericVector par, NumericVector gr) {
   
   NumericVector mu(par.length());
   arma::mat     Sigma = Rcpp::as<arma::mat>(NumericMatrix::diag(par.length(), 1));
@@ -220,19 +220,25 @@ SEXP gcharm(Function Model, List Data, int Iterations, int Status,
           floor(as<double>(Mo0["LP"]) * 100) / 100 << std::endl;
     }
     // Propose new values
-    Rcpp::NumericVector prop = BHARproposal(as<Rcpp::NumericVector>(Mo0["parm"]), h, Data, Model, gr0);
+    Rcpp::NumericVector prop = BHARproposal(as<Rcpp::NumericVector>(Mo0["parm"]), gr0);
     Rcpp::List Mo1 = Model(prop, Data);
     // Accept/Reject
     double u = as<double>(runif(1));
     double LP0 = Mo0["LP"];
     double LP1 = Mo1["LP"];
-    //NumericVector diffxy = as<Rcpp::NumericVector>(Mo0["parm"]) - prop;
-    //NumericVector diffyx = prop - as<Rcpp::NumericVector>(Mo0["parm"]);
-    //NumericVector gry = grad(Model, Data, prop, h);
-    alpha = exp(LP1 - LP0);// *prod((1 + exp(diffxy * gr0)) / (1 + exp(diffyx * gry)));
+    NumericVector gry = grad(Model, Data, prop, h);
+    //NumericVector beta1 = -gry*(as<Rcpp::NumericVector>(Mo0["parm"]) - prop);
+    //NumericVector beta2 = -gr0*(prop - as<Rcpp::NumericVector>(Mo0["parm"]));
+    //double LQR = sum(-(Rcpp::pmax(beta1,0)+log(1+exp(-abs(beta1))))+(Rcpp::pmax(beta2, 0) + log(1 + exp(-abs(beta2)))));
+    NumericVector beta1 = 1.0 + exp(-gry*(as<Rcpp::NumericVector>(Mo0["parm"]) - prop));
+    NumericVector beta2 = 1.0 + exp(-gr0*(prop - as<Rcpp::NumericVector>(Mo0["parm"])));
+    double LQR = sum(log(beta1) - log(beta2));
+    alpha = exp(LP1 - LP0 + LQR);
+    //alpha = exp(LP1 - LP0);
     if (u < alpha) {
         Mo0 = Mo1;
-        gr0 = grad(Model, Data, prop, h); //gry;
+        gr0 = gry;
+        //gr0 = grad(Model, Data, prop, h);
         Acceptance += 1.0 / LIV;
     }
     // Save Thinned Samples

@@ -147,7 +147,7 @@ summary.YABS <- function(oop) {
     cat("MPSRF = ",sprintf("%.3f",oop$MPSRF),"\n",sep="")
     cat("MPSRF is the multivariate potential scale reduction factor (at convergence, MPSRF=1).\n")
   }
-  return(stats)
+  invisible(stats)
 }
 
 #### Print Method
