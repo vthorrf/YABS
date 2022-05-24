@@ -15,7 +15,9 @@ RoxygenNote: 7.1.1
 Imports: Rcpp (>= 1.0.7)
 Depends: coda (>= 0.19-4)
 Suggests: rstan,
-          jagsUI
+          jagsUI,
+	    LaplacesDemon,
+          fmcmc
 LinkingTo: Rcpp,
            RcppArmadillo
 BugReports: https://github.com/vthorrf/YABS/issues

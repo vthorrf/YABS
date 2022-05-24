@@ -46,7 +46,7 @@ seed <- 1234; N <- 200; V <- 5
 set.seed(seed)
 X <- MASS::mvrnorm(N, rep(0,V), diag(V))
 betas <- runif(V+1, .3, .7)
-y <- rnorm(N, cbind(1,X) %*% betas, 1)
+y <- rnorm(N, cbind(1,X) \%*\% betas, 1)
 
 ### DATA LIST====
 parm.names <- c(paste("beta",0:V,sep=""),"sigma")
@@ -73,7 +73,7 @@ Model <- function(parm, Data){
   Lp <- beta.prior + sigma.prior
   
   ### Log-Likelihood
-  mu <- cbind(1,Data$X) %*% beta
+  mu <- cbind(1,Data$X) \%*\% beta
   LL <- sum(dnorm(Data$y, mu, sigma, log=TRUE))
   
   ### Log-Posterior
