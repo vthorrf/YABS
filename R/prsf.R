@@ -19,7 +19,7 @@ prsf <- function (x, confidence = 0.95) {
 
   if(Nvar > 1) {
       if (is.R()) {
-          CW <- chol(as.matrix(Matrix::nearPD(W)$mat))
+          CW <- chol(as.matrix(nearPD(W)$mat))
           emax <- eigen(backsolve(CW, t(backsolve(CW, B, transpose=TRUE)),
                                   transpose=TRUE),
                         symmetric=TRUE, only.values=TRUE)$values[1]

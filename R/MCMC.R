@@ -1,193 +1,254 @@
-MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL,
-                 burnin=NULL, status=NULL, thinning=NULL,
-                 algo=c("harmwg","harm","barker")) {
-  ### Initial settings
-  if(length(algo) > 1)        algo           <- "harmwg"
-  if(is.null(Initial.Values)) Initial.Values <- Data$PGF(Data)
-  if(is.null(iterations))     iterations     <- 100
-  if(iterations <= 0)         iterations     <- 100
-  if(is.null(burnin))         burnin         <- 0
-  if(burnin < 0)              burnin         <- 0
-  if(is.null(status))         status         <- round(iterations/10,0)
-  if(status <= 0)             status         <- round(iterations/10,0)
-  if(status == 0)             status         <- 1
+MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
+                 status=NULL, thinning=NULL, adapt=NULL, nchains=1, parallel=FALSE,
+                 cores=NULL, update.progress=NULL, opt.init=TRUE, par.cov=NULL,
+                 algo=c("mwg","rwm","barker","ohss")) {
+  ################=============== Initial settings
+  ## Default values for the arguments and some error handling
+  if(length(algo) != 1)        algo            <- NULL
+  if(is.null(algo))            algo            <- "rwm"
+  if(is.null(Initial.Values))  Initial.Values  <- Data$PGF(Data)
+  if(is.null(iterations))      iterations      <- 100
+  if(iterations <= 0)          iterations      <- 100
+  if(is.null(burnin))          burnin          <- 0
+  if(burnin < 0)               burnin          <- 0
+  if(is.null(status))          status          <- round(iterations/10,0)
+  if(status <= 0)              status          <- round(iterations/10,0)
+  if(status == 0)              status          <- 1
+  if(is.null(adapt))           adapt           <- 0
+  if(adapt < 0)                adapt           <- 0
+  if(adapt > 0)                adapt           <- adapt + 20
+  if(is.null(cores))           cores           <- 2
+  if(cores <= 0)               cores           <- 2
+  if(is.null(update.progress)) update.progress <- 2
+  if(update.progress <= 0)     update.progress <- 2
+  if(!is.matrix(par.cov) & !is.null(par.cov)) stop("'par.cov' should be a matrix. Please check the documentation.")
   status <- round(status,0)
-  h <- 1e-6; ITER   <- iterations + burnin
+  h <- 1e-6; ITER <- iterations + burnin + adapt
   if(is.null(thinning))       thinning       <- 1
   if(thinning <= 0)           thinning       <- 1
-  liv        <- length(Initial.Values)
-  acceptance <- 0#rep(0, liv)
-  MO0        <- Model(Initial.Values, Data)
-  thinned    <- matrix(Initial.Values, floor(ITER/thinning)+1,
-                       length(Initial.Values), byrow=TRUE)
+  
+  ## Improve initial values and estimate step sizes
+  post <- function(par) return( suppressWarnings(Model(par, Data)$LP) )
+  if(opt.init) {
+    if(!is.null(par.cov)) {
+      cat("Improving initial values with MAP estimation.\n")
+    } else {
+      cat("Improving initial values and finding initial step sizes with MAP estimation.\n")
+    }
+    if(!is.null(par.cov)) Hessian <- FALSE else Hessian <- TRUE
+    MAP <- tryCatch(optim( Initial.Values, post, method="L-BFGS",
+                           control=list(fnscale=-1), hessian=Hessian ),
+                    error=function(e) {
+                      optim( Initial.Values, post, method="BFGS",
+                             control=list(fnscale=-1), hessian=Hessian )
+                    })
+    if(!is.null(par.cov)) epsilon <- par.cov else epsilon <- -solve(MAP$hessian)
+    if(min(eigen(epsilon)$values) < 0) {
+      epsilon <- nearPD(epsilon, base.matrix=T)$mat
+    }
+    Initial.Values <- MASS::mvrnorm(4+nchains, MAP$par, Sigma=epsilon, empirical=TRUE)
+  } else {
+    if(is.null(par.cov)) epsilon <- diag( length(Initial.Values) ) * .1 else epsilon <- par.cov
+    if(min(eigen(epsilon)$values) < 0) {
+      epsilon <- nearPD(epsilon, base.matrix=T)$mat
+    }
+    Initial.Values <- MASS::mvrnorm(4+nchains, Initial.Values, Sigma=epsilon, empirical=TRUE)
+  }
+  
+  ## Prepare the parameters for the MCMC algorithms
+  liv        <- length(Initial.Values[1,])
+  acceptance <- 0
+  MO0        <- Model(Initial.Values[1,], Data)
+  thinned    <- matrix(Initial.Values[1,], floor(ITER/thinning)+1,
+                       length(Initial.Values[1,]), byrow=TRUE)
+  postpred   <- matrix(MO0$yhat, floor(ITER/thinning)+1,
+                       length(MO0$yhat), byrow=TRUE)
   DEV  <- matrix(MO0[["Dev"]], floor(ITER/thinning)+1, 1)
   MON  <- matrix(MO0[["Monitor"]], floor(ITER/thinning)+1,
                  length(MO0[["Monitor"]]), byrow=TRUE)
-  BURN <- floor(burnin/thinning)+1
+  BURN <- floor({burnin + adapt}/thinning)+1
   
-  ### Fit model
-  if(algo == "harmwg") {
-    ##############=============== Hit-and-Run Metropolis-within-Gibbs
-    method = "HARM-WG"
-    cat("Algorithm: Hit-and-Run Metropolis-within-Gibbs\n\n")
+  ################=============== Fit model
+  if(algo == "mwg") {
+    ##############=============== Metropolis-within-Gibbs
+    method = "MWG"
+    cat("Algorithm: Metropolis-within-Gibbs\n\n")
     startTime = proc.time()
-    fit <- harmwg(Model, Data, ITER, status, thinning, acceptance,
-                  DEV, liv, MON, MO0, thinned)
+    if(parallel) {
+      cat("Running ", nchains," chains in parallel\n", sep="")
+      cl <- makeCluster(cores)
+      pboptions(nout=update.progress)
+      fits <- pblapply(X=1:nchains, function(i) {
+        temp0 <- Model(Initial.Values[i,], Data)
+        harmwg(Model, Data, ITER, status, thinning, acceptance,
+               DEV, liv, MON, temp0, thinned, postpred, adapt, epsilon)
+      }, cl = cl)
+      stopCluster(cl)
+    } else {
+      fits <- lapply(1:nchains, function(i) {
+        cat("=========Chain number ", i,"=========\n", sep="")
+        temp0 <- Model(Initial.Values[i,], Data)
+        harmwg(Model, Data, ITER, status, thinning, acceptance,
+               DEV, liv, MON, temp0, thinned, postpred, adapt, epsilon)
+      })
+    }
     stopTime = proc.time()
     elapsedTime = stopTime - startTime
     cat("\n")
     cat("It took ",round(elapsedTime[3],2)," secs for the run to finish.\n", sep="")
-  } else if(algo == "harm") {
-    ##############=============== Hit-and-Run Metropolis
-    method = "HARM"
-    cat("Algorithm: Hit-and-Run Metropolis\n\n")
+  } else if(algo == "rwm") {
+    ##############=============== Random-walk Metropolis
+    method = "RWM"
+    cat("Algorithm: Random-walk Metropolis\n\n")
     startTime = proc.time()
-    fit <- harm(Model, Data, ITER, status, thinning, acceptance,
-                DEV, liv, MON, MO0, thinned)
+    if(parallel) {
+      cat("Running ", nchains," chains in parallel\n", sep="")
+      cl <- makeCluster(cores)
+      pboptions(nout=update.progress)
+      fits <- pblapply(X=1:nchains, function(i) {
+        temp0 <- Model(Initial.Values[i,], Data)
+        harm(Model, Data, ITER, status, thinning, acceptance,
+             DEV, liv, MON, temp0, thinned, postpred, adapt, epsilon)
+      }, cl = cl)
+      stopCluster(cl)
+    } else {
+      fits <- lapply(1:nchains, function(i) {
+        cat("=========Chain number ", i,"=========\n", sep="")
+        temp0 <- Model(Initial.Values[i,], Data)
+        harm(Model, Data, ITER, status, thinning, acceptance,
+             DEV, liv, MON, temp0, thinned, postpred, adapt, epsilon)
+      })
+    }
     stopTime = proc.time()
     elapsedTime = stopTime - startTime
     cat("\n")
     cat("It took ",round(elapsedTime[3],2)," secs for the run to finish.\n", sep="")
   } else if(algo == "barker") {
-    ##############=============== Barker Hit-and-Run Metropolis
-    method = "Barker-HARM"
-    cat("Algorithm: Barker Hit-and-Run Metropolis\n\n")
+    ##############=============== Barker Proposal Metropolis
+    method = "BPM"
+    cat("Algorithm: Barker Proposal Metropolis\n\n")
     startTime = proc.time()
-    fit <- gcharm(Model, Data, ITER, status, thinning, acceptance,
-                  DEV, h, liv, MON, MO0, thinned)
+    if(parallel) {
+      cat("Running ", nchains," chains in parallel\n", sep="")
+      cl <- makeCluster(cores)
+      pboptions(nout=update.progress)
+      fits <- pblapply(X=1:nchains, function(i) {
+        temp0 <- Model(Initial.Values[i,], Data)
+        gcharm(Model, Data, ITER, status, thinning, acceptance,
+               DEV, h, liv, MON, temp0, thinned, postpred, adapt, epsilon)
+      }, cl = cl)
+      stopCluster(cl)
+    } else {
+      fits <- lapply(1:nchains, function(i) {
+        cat("=========Chain number ", i,"=========\n", sep="")
+        temp0 <- Model(Initial.Values[i,], Data)
+        gcharm(Model, Data, ITER, status, thinning, acceptance,
+               DEV, h, liv, MON, temp0, thinned, postpred, adapt, epsilon)
+      })
+    }
     stopTime = proc.time()
     elapsedTime = stopTime - startTime
     cat("\n")
     cat("It took ",round(elapsedTime[3],2)," secs for the run to finish.\n", sep="")
-  } else stop("Unkown MCMC algorithm. Please, check documentation.")
+  } else if(algo == "ohss") {
+    ##############=============== Oblique Hyperrectangle Slice Sampler
+    method = "OHSS"
+    cat("Algorithm: Oblique Hyperrectangle Slice Sampler\n\n")
+    startTime = proc.time()
+    if(parallel) {
+      cat("Running ", nchains," chains in parallel\n", sep="")
+      cl <- makeCluster(cores)
+      pboptions(nout=update.progress)
+      fits <- pblapply(X=1:nchains, function(i) {
+        temp0 <- Model(Initial.Values[i,], Data)
+        ohss(Model, Data, ITER, status, thinning, acceptance,
+             DEV, liv, MON, temp0, thinned, postpred, adapt)
+      }, cl = cl)
+      stopCluster(cl)
+    } else {
+      fits <- lapply(1:nchains, function(i) {
+        cat("=========Chain number ", i,"=========\n", sep="")
+        temp0 <- Model(Initial.Values[i,], Data)
+        ohss(Model, Data, ITER, status, thinning, acceptance,
+             DEV, liv, MON, temp0, thinned, postpred, adapt)
+      })
+    }
+    stopTime = proc.time()
+    elapsedTime = stopTime - startTime
+    cat("\n")
+    cat("It took ",round(elapsedTime[3],2)," secs for the run to finish.\n", sep="")
+  } else  stop("Unkown MCMC algorithm. Please, check documentation.")
   
-  ### Results
-  post      <- as.matrix(fit$thinned[{1:nrow(fit$thinned)} %!in% seq_len(BURN),])
-  colnames(post) <- Data$parm.names
-  logPost   <- fit$Mon[{1:length(fit$Mon)} %!in% seq_len(BURN)]
-  deviance  <- fit$Dev[{1:length(fit$Dev)} %!in% seq_len(BURN)]
-  aic       <- {{2 * liv} + deviance}
-  posterior <- data.frame(post, "deviance"=deviance, "aic"=aic)
-  Dbar      <- mean(deviance)
-  pD        <- var(deviance)/2
+  ################=============== Results
+  ## Posterior list
+  post_list <- lapply(fits, function(g) {
+    temp0 <- as.matrix(g$thinned[{1:nrow(g$thinned)} %!in% seq_len(BURN),])
+    dev <- unlist(g$Dev[{1:nrow(g$Dev)} %!in% seq_len(BURN),])
+    temp1 <- cbind(temp0, dev, {{2 * liv} + dev})
+    colnames(temp1) <- c(Data$parm.names, "deviance", "aic")
+    return(temp1)
+  })
+  ## Posterior predictive
+  ppred <- lapply(fits, function(g) {
+    as.matrix(g$postpred[{1:nrow(g$postpred)} %!in% seq_len(BURN),])
+  })
+  ## Additionally monitored variables/parameters
+  Monitor <- lapply(fits, function(g) {
+    as.matrix(g$Mon[{1:nrow(g$Mon)} %!in% seq_len(BURN),])
+  })
+  ## LogPosterior
+  logPost <- lapply(post_list, function(g) {
+    apply(g, 1, post)
+  })
+  ## Deviance
+  deviance <- lapply(post_list, function(g) {
+    g[,"deviance"]
+  })
+  ## Posterior data frame
+  posterior <- data.frame(do.call("rbind",post_list))
+  ## Calculate DIC
+  Dbar      <- mean(unlist(deviance))
+  pD        <- var(unlist(deviance))/2
   DIC       <- list(DIC=Dbar + pD, Dbar=Dbar, pD=pD)
-  accRate   <- fit$Acceptance / ITER
+  ## Acceptance rate
+  accRate   <- mean(sapply(fits, function(g) g$Acc))
+  ## Effective Sample Size
   ESS       <- apply(posterior,2,effectiveSize)
-  halves    <- suppressWarnings( apply(posterior, 2, split, c(1,2), drop=T) )
-  GD        <- prsf(lapply(1:2, function(R) {
-                  temp <- sapply(1:ncol(posterior), function(g) halves[[g]][[R]])
-                  temp <- mcmc(as.matrix(temp[1:min(lengths(halves[[1]])),]))
-                  colnames(temp) <- c(Data$parm.names, "deviance", "aic")
-                  return(temp)
-               }))
+  ## R_hat (Potential scale reduction factor)
+  if( nchains == 1 ) {
+    halves    <- suppressWarnings( apply(posterior, 2, split,
+                                         f=c(rep(1, floor(nrow(posterior)/2)),
+                                         rep(2, nrow(posterior)-floor(nrow(posterior)/2))),
+                                         drop=T) )
+    GD        <- prsf(lapply(1:2, function(R) {
+                    temp <- sapply(1:ncol(posterior), function(g) halves[[g]][[R]])
+                    temp <- mcmc(as.matrix(temp[1:min(lengths(halves[[1]])),]))
+                    colnames(temp) <- colnames(posterior)
+                    return(temp)
+                 }))
+    
+  } else {
+    GD <- prsf(lapply(post_list, as.mcmc))
+  }
+  ## Information regarding the run
   mcmc.info <- list(algorithm=method, n.iter=ITER, n.burnin=burnin,
-                    n.thin=thinning, elapsed.mins=elapsedTime/60)
-  Result    <- list(posterior=posterior, LP=logPost, DIC=DIC,
-                    acc=accRate, ESS=ESS, PSRF=GD$psrf[,1],
-                    MPSRF=GD$mpsrf, mcmc.info=mcmc.info)
+                    n.thin=thinning, n.adapt=adapt, n.chains=nchains,
+                    elapsed.mins=elapsedTime/60)
+  ## Final list of results
+  Result    <- list(posterior=posterior,
+                    yhat=do.call("rbind",ppred),
+                    LP=unlist(logPost),
+                    Monitor=if(ncol(Monitor[[1]]) == 1) {
+                      unlist(Monitor)
+                    } else { do.call("rbind",Monitor) },
+                    DIC=DIC,
+                    acc=accRate,
+                    ESS=ESS,
+                    PSRF=GD$psrf[,1],
+                    MPSRF=GD$mpsrf,
+                    mcmc.info=mcmc.info)
   class(Result) <- "YABS"
   return(Result)
 }
 
 '%!in%' <- function(x,y){ !('%in%'(x,y)) }
-
-#### Summary Method
-summary.YABS <- function(oop) {
-  ### Header
-  cat("YABS output generated with ", oop$mcmc.info$algorithm," algorithm.\n",sep="")
-  cat("Estimates based on 1 chain of ", oop$mcmc.info$n.iter," iterations,\n",sep="")
-  cat("burn-in = ", oop$mcmc.info$n.burnin, " iterations and thin rate = ",
-      oop$mcmc.info$n.thin,",\n",sep="")
-  cat("yielding ",nrow(oop$posterior)," total samples from the joint posterior.\n",sep="")
-  cat("MCMC ran for ",sprintf("%.3f",oop$mcmc.info$elapsed.mins[1])," minutes.\n\n",sep="")
-  
-  ### Summary table
-  EAP    <- sprintf("%.3f",colMeans(oop$posterior))
-  DP     <- sprintf("%.3f",apply(oop$posterior,2,sd))
-  HDI    <- t(apply(oop$posterior,2,quantile,c(.025,.975)))
-  f      <- colMeans(sweep(sign(oop$posterior),2,sign(apply(oop$posterior,2,median)),"=="))
-  ESS    <- oop$ESS
-  PSRF   <- oop$PSRF
-  params <- colnames(oop$posterior)
-  stats <- rbind( c("", c("EAP","sd","2.5%","97.5%","overlap0","f","ESS","PSRF")),
-                  cbind(params, EAP, DP, t(matrix(sprintf("%.3f",t(HDI)),nrow=2)),
-                        rowSums(sign(HDI)) == 0, sprintf("%.3f",f),
-                        sprintf("%.2f",ESS), sprintf("%.3f",PSRF)) )
-  align <- apply(nchar(stats), 2, max) + 2
-  total <- 101
-  for(i in 1:min(total,nrow(stats))) {
-    cat(sprintf(paste("%-",align[1],"s",sep=""), stats[i,1]),
-        sprintf(paste("%",align[2],"s",sep=""), stats[i,2]),
-        sprintf(paste("%",align[3],"s",sep=""), stats[i,3]),
-        sprintf(paste("%",align[4],"s",sep=""), stats[i,4]),
-        sprintf(paste("%",align[5],"s",sep=""), stats[i,5]),
-        sprintf(paste("%",align[6],"s",sep=""), stats[i,6]),
-        sprintf(paste("%",align[7],"s",sep=""), stats[i,7]),
-        sprintf(paste("%",align[8],"s",sep=""), stats[i,8]),
-        sprintf(paste("%",align[9],"s",sep=""), stats[i,9]),"\n",sep="")
-  }
-  if(nrow(stats) > total) {
-    cat(' [ reached getOption("max.print") -- omitted ',nrow(stats) - total - 1,' rows ]\n')
-  }
-  cat("\n")
-  if(sum(PSRF >= 1.1) == 0) {
-    cat("Successful convergence based on PSRF (or Rhat) values (all < 1.1).\n")
-  } else { cat("**WARNING** PSRF (or Rhat) values indicate convergence failure.\n") }
-  cat("PSRF is the potential scale reduction factor (at convergence, PSRF=1).\n")
-  cat("ESS is the sample size of each posterior adjusted for autocorrelation.\n")
-  cat("\n")
-  cat("overlap0 checks if 0 falls in the parameter's 95% credible interval.\n")
-  cat("f is the proportion of the posterior with the same sign as the mean;\n")
-  cat("i.e., our confidence that the parameter is positive or negative.\n")
-  cat("\n")
-  cat("DIC info: (pD = var(deviance)/2).\n")
-  cat("pD = ",sprintf("%.2f",oop$DIC$pD)," and DIC = ",sprintf("%.2f",oop$DIC$DIC),"\n",sep="")
-  cat("DIC is an estimate of expected predictive error (lower is better).\n")
-  if({length(oop$MPSRF) != 0} | !is.na(oop$MPSRF)) {
-    cat("MPSRF = ",sprintf("%.3f",oop$MPSRF),"\n",sep="")
-    cat("MPSRF is the multivariate potential scale reduction factor (at convergence, MPSRF=1).\n")
-  }
-  invisible(stats)
-}
-
-#### Print Method
-print.YABS <- function(oop) {
-  ### Header
-  cat("YABS output generated with ", oop$mcmc.info$algorithm," algorithm.\n",sep="")
-  cat("MCMC ran for ",sprintf("%.3f",oop$mcmc.info$elapsed.mins[1])," minutes.\n\n",sep="")
-  
-  ### Summary table
-  EAP    <- sprintf("%.3f",colMeans(oop$posterior))
-  DP     <- sprintf("%.3f",apply(oop$posterior,2,sd))
-  HDI    <- t(apply(oop$posterior,2,quantile,c(.025,.975)))
-  f      <- colMeans(sweep(sign(oop$posterior),2,sign(apply(oop$posterior,2,median)),"=="))
-  ESS    <- oop$ESS
-  PSRF   <- oop$PSRF
-  params <- colnames(oop$posterior)
-  stats <- rbind( c("", c("EAP","sd","2.5%","97.5%","overlap0","f","ESS","PSRF")),
-                  cbind(params, EAP, DP, t(matrix(sprintf("%.3f",t(HDI)),nrow=2)),
-                        rowSums(sign(HDI)) == 0, sprintf("%.3f",f),
-                        sprintf("%.2f",ESS), sprintf("%.3f",PSRF)) )
-  align <- apply(nchar(stats), 2, max) + 2
-  total <- 101
-  for(i in 1:min(total,nrow(stats))) {
-    cat(sprintf(paste("%-",align[1],"s",sep=""), stats[i,1]),
-        sprintf(paste("%",align[2],"s",sep=""), stats[i,2]),
-        sprintf(paste("%",align[3],"s",sep=""), stats[i,3]),
-        sprintf(paste("%",align[4],"s",sep=""), stats[i,4]),
-        sprintf(paste("%",align[5],"s",sep=""), stats[i,5]),
-        sprintf(paste("%",align[6],"s",sep=""), stats[i,6]),
-        sprintf(paste("%",align[7],"s",sep=""), stats[i,7]),
-        sprintf(paste("%",align[8],"s",sep=""), stats[i,8]),
-        sprintf(paste("%",align[9],"s",sep=""), stats[i,9]),"\n",sep="")
-  }
-  if(nrow(stats) > total) {
-    cat(' [ reached getOption("max.print") -- omitted ',nrow(stats) - total - 1,' rows ]\n')
-  }
-  cat("\n")
-  if(sum(PSRF >= 1.1) == 0) {
-    cat("Successful convergence based on PSRF (or Rhat) values (all < 1.1).\n")
-  } else { cat("**WARNING** PSRF (or Rhat) values indicate convergence failure.\n") }
-  cat("\n")
-  return(stats)
-}

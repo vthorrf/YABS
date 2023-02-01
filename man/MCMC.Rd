@@ -5,7 +5,10 @@
 The `MCMC` function is a basic user interface for calling the samplers provided with the YABS package. The user provides a Model, a Data list, and Initial values (optional if PGF is provided). The function compiles the information and sends it to internal samplers, written in C++. The results are consolidated and summarized to be output as an object of class YABS.
 }
 \usage{
-MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL, status=NULL, thinning=NULL, algo=c("harmwg","harm","barker"))
+MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
+     status=NULL, thinning=NULL, adapt=NULL, nchains=1, parallel=FALSE,
+     cores=NULL, update_progress=NULL, opt.init=TRUE, par.cov=NULL,
+     algo=c("mwg","rwm","barker","ohss"))
 }
 \arguments{
    \item{Model}{The user provided model. It should always output a list containing the following named objects: (i) LP, the logposterior; (ii) Dev, the deviance; (iii) Monitor, a single value or a vector of values to be monitored; (iv) yhat, values simulated from the posterior; and (v) parm, the value or vector with the parameters.}
@@ -15,7 +18,14 @@ MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL, status=NULL
    \item{burnin}{The number of initial iterations to be discarded (excluding thinning).}
    \item{status}{Indicates how often, in iterations, the user would like the status printed to the screen. Should be an integer between 1 and the number of iterations (including burning and thinning).}
    \item{thinning}{Indicates that every nth iteration will be retained, while the other iterations are discarded. Must be a positive integer.}
-   \item{algo}{The MCMC algorithm to be used. Currently, the following are implemented: (i) "harmwg", Hit-and-Run Metropolis-Within-Gibbs; (ii) "harm", Hit-and-Run Metropolis; and (iii) "barker", Barker Hit-and-Run Metropolis. If no (or more than one) algorithm is selected, defaults to "harmwg".}
+   \item{adapt}{The number of iterations to run in the adaptive phase.}
+   \item{nchains}{The number of Markov chains to run.}
+   \item{parallel}{If TRUE, run MCMC chains in parallel on multiple CPU cores.}
+   \item{cores}{If parallel=TRUE, specify the number of CPU cores used.}
+   \item{update.progress}{How many times should the progress bar be updated when running in parallel? Note that setting this to a large value should result in the worse performance, due to additional overhead communicating among the parallel processes.}
+   \item{opt.init}{If TRUE, the initial values will be improved (i.e., set closer to the maximum a posteriori) and the initial step sizes will be estimated with the negative inverse Hessian of the MAP estimates.}
+   \item{par.cov}{An optional covariance matrix of the parameters (i.e., the diagonal represents the step sizes for the parameters to be estimated using the MCMC algorithms).}
+   \item{algo}{The MCMC algorithm to be used. Currently, the following are implemented: (i) "mwg", Metropolis-Within-Gibbs; (ii) "rwm", Random-walk Metropolis; (iii) "barker", Barker Proposal Metropolis; and (iv) "ohss", Oblique Hyperrectangle Slice Sampler. If no (or more than one) algorithm is selected, defaults to "rwm".}
 }
 \value{
 A list of class YABS containing:
@@ -30,13 +40,9 @@ A list of class YABS containing:
 }
 \references{
 Livingstone, S., & Zanella, G. (2019). The Barker proposal: combining robustness and efficiency in gradient-based MCMC. JRSS: Series B (Statistical Methodology), 84(2), 496-523.
+Thompson, M. D. (2011). Slice Sampling with Multivariate Steps. http://hdl.handle.net/1807/31955
 }
 \examples{##### Multiple Linear Regression with 5 Predictors
-### Start
-rm(list=ls())
-dev.off()
-cat("\014")
-
 ### Packages and functions====
 require(YABS)
 require(compiler)
@@ -44,7 +50,7 @@ require(compiler)
 ### Random data====
 seed <- 1234; N <- 200; V <- 5
 set.seed(seed)
-X <- MASS::mvrnorm(N, rep(0,V), diag(V))
+X <- sapply(1:V, function(g) rnorm(N))
 betas <- runif(V+1, .3, .7)
 y <- rnorm(N, cbind(1,X) \%*\% betas, 1)
 
@@ -68,8 +74,8 @@ Model <- function(parm, Data){
   sigma <- exp(parm[Data$pos.sigma])
   
   ### Log-Prior
-  beta.prior  <- sum(dnorm(beta, 0, 1, log=T))
-  sigma.prior <- sum(dgamma(sigma, 1e-2, 1e-2, log=T))
+  beta.prior  <- sum(dnorm(beta, 0, 1, log=TRUE))
+  sigma.prior <- sum(dgamma(sigma, 1e-2, 1e-2, log=TRUE))
   Lp <- beta.prior + sigma.prior
   
   ### Log-Likelihood
@@ -85,15 +91,19 @@ Model <- compiler::cmpfun(Model)
 
 ### FIT====
 fit1 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
-             burnin=100, status=110, thinning=1, algo="harmwg")
+             burnin=100, status=110, thinning=1, algo="mwg")
 fit2 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
-             burnin=100, status=110, thinning=1, algo="harm")
+             burnin=100, status=110, thinning=1, algo="rwm")
 fit3 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
              burnin=100, status=110, thinning=1, algo="barker")
+fit4 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
+             burnin=100, status=110, thinning=1, algo="ohss")
 plot.ts(fit1$posterior)
 plot.ts(fit2$posterior)
 plot.ts(fit3$posterior)
+plot.ts(fit4$posterior)
 fit1
 fit2
 fit3
+fit4
 }

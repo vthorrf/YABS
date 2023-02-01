@@ -5,7 +5,8 @@
 Internal function. Samples new values from the logposterior of the user provided model using the Gradient-Corrected Hit-and-Run Metropolis MCMC algorithm.
 }
 \usage{
-gcharm(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, h, LIV, Mon, Mo0, thinned)
+gcharm(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, h,
+       LIV, Mon, Mo0, thinned)
 }
 \arguments{
    \item{Model}{The user provided model.}
