@@ -231,9 +231,9 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
     GD <- prsf(lapply(post_list, as.mcmc))
   }
   ## Information regarding the run
-  mcmc.info <- list(algorithm=method, n.iter=ITER, n.burnin=burnin,
-                    n.thin=thinning, n.adapt=adapt, n.chains=nchains,
-                    elapsed.mins=elapsedTime/60)
+  mcmc.info <- list(algorithm=method, n.iter=nrow(post_list[[1]]),
+                    n.burnin=burnin, n.thin=thinning, n.adapt=adapt,
+                    n.chains=nchains, elapsed.mins=elapsedTime/60)
   ## Final list of results
   Result    <- list(posterior=posterior,
                     yhat=do.call("rbind",ppred),

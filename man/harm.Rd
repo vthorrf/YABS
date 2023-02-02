@@ -1,11 +1,12 @@
 \name{harm}
 \alias{harm}
-\title{Hit-and-Run Metropolis Sampler}
+\title{Random-walk Metropolis Sampler}
 \description{
-Internal function. Samples new values from the logposterior of the user provided model using the Hit-and-Run Metropolis MCMC algorithm.
+Internal function. Samples new values from the logposterior of the user provided model using the Random-walk Metropolis MCMC algorithm.
 }
 \usage{
-harm(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, LIV, Mon, Mo0, thinned)
+harm(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, LIV,
+     Mon, Mo0, thinned, adapt, epsilon)
 }
 \arguments{
    \item{Model}{The user provided model.}
@@ -19,6 +20,8 @@ harm(Model, Data, Iterations, Status, Thinning, Acceptance, Dev, LIV, Mon, Mo0, 
    \item{Mon}{The (empty) matrix of variables/parameters to be be monitored (other than the model's parameters).}
    \item{Mo0}{A list with the output of Model for the Initial Values.}
    \item{thinned}{The (empty) matrix of thinned values.}
+   \item{adapt}{Total number of adaptive iterations.}
+   \item{epsilon}{The initial covariance matrix between parameters.}
 }
 \value{
 A list containing: (i) "Acceptance", the achieved acceptance rate; (ii) "Dev", the posterior distribution of the deviance; (iii) "Mon", the posterior distribution of the monitored variables/parameters; and (iv) "thinned", the posterior distribution of all parameters of the model.

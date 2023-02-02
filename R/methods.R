@@ -58,19 +58,19 @@ summary.YABS <- function(object, ...) {
 }
 
 #### Print Method
-print.YABS <- function(object, ...) {
+print.YABS <- function(x, ...) {
   ### Header
-  cat("YABS output generated with ", object$mcmc.info$algorithm," algorithm.\n",sep="")
-  cat("MCMC ran for ",sprintf("%.3f",object$mcmc.info$elapsed.mins[1])," minutes.\n\n",sep="")
+  cat("YABS output generated with ", x$mcmc.info$algorithm," algorithm.\n",sep="")
+  cat("MCMC ran for ",sprintf("%.3f",x$mcmc.info$elapsed.mins[1])," minutes.\n\n",sep="")
   
   ### Summary table
-  EAP    <- sprintf("%.3f",colMeans(object$posterior))
-  DP     <- sprintf("%.3f",apply(object$posterior,2,sd))
-  HDI    <- t(apply(object$posterior,2,quantile,c(.025,.975)))
-  f      <- colMeans(sweep(sign(object$posterior),2,sign(apply(object$posterior,2,median)),"=="))
-  ESS    <- object$ESS
-  PSRF   <- object$PSRF
-  params <- colnames(object$posterior)
+  EAP    <- sprintf("%.3f",colMeans(x$posterior))
+  DP     <- sprintf("%.3f",apply(x$posterior,2,sd))
+  HDI    <- t(apply(x$posterior,2,quantile,c(.025,.975)))
+  f      <- colMeans(sweep(sign(x$posterior),2,sign(apply(x$posterior,2,median)),"=="))
+  ESS    <- x$ESS
+  PSRF   <- x$PSRF
+  params <- colnames(x$posterior)
   stats <- rbind( c("", c("EAP","sd","2.5%","97.5%","overlap0","f","ESS","PSRF")),
                   cbind(params, EAP, DP, t(matrix(sprintf("%.3f",t(HDI)),nrow=2)),
                         rowSums(sign(HDI)) == 0, sprintf("%.3f",f),
@@ -96,5 +96,5 @@ print.YABS <- function(object, ...) {
     cat("Successful convergence based on PSRF (or Rhat) values (all < 1.1).\n")
   } else { cat("**WARNING** PSRF (or Rhat) values indicate convergence failure.\n") }
   cat("\n")
-  invisible(object)
+  invisible(x)
 }
