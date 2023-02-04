@@ -2,7 +2,7 @@ Package: YABS
 Type: Package
 Title: YABS: Yet Another Bayesian Sampler
 Version: 0.2.0
-Date: 2023-02-01
+Date: 2023-02-03
 Authors@R: c(person("Vithor", "Franco", email = "vithorfranco@gmail.com", role = c("aut", "cre")))
 Description: Provides general purpose tools for helping users to implement Bayesian
              models using R functions. Currently, Metropolis-within-Gibbs, Random-walk
