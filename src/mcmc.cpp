@@ -22,26 +22,50 @@ Rcpp::NumericVector grad(Function Model, List Data, NumericVector par, double h)
   return out;
 }
 
-arma::mat mvrnormArma(int n, arma::vec mu, arma::mat sigma) {
-  int ncols = sigma.n_cols;
-  arma::mat Y = arma::randn(n, ncols);
-  arma::mat m = Y * arma::chol(sigma);
+arma::mat mvrnormArma(int n, arma::mat sigma) {
+  int p = sigma.n_cols;
+  arma::mat Y = arma::randn(n, p);
+  arma::mat m = Y * sigma.t();
   return m;
 }
 
-Rcpp::NumericMatrix covMat(const Rcpp::NumericMatrix &X) {
-  arma::mat X_arma = Rcpp::as<arma::mat>(X);
-  int n = X_arma.n_rows;
-  arma::mat centered = X_arma - arma::repmat(arma::mean(X_arma, 0), n, 1);
-  arma::mat covariance = (centered.t() * centered) / double(n - 1);
-  return Rcpp::wrap(covariance);
+arma::mat sigmaEstimate(const Rcpp::NumericMatrix& X, NumericMatrix epsilon, int ind, NumericVector sigma, bool accept) {
+    double pi = acos(-1.0);
+    double p_star = .40;
+    double alpha = 0.8416212;//R::qnorm(0.40 * 2.0, mean=0.0, sd=1.0, lower=true, log=false);
+    Rcpp::NumericVector stepLength = sigma * ( (1.0 - (1.0 / double(sigma.length()))) * 
+                                               ((pow(2.0 * pi, .5) * exp(pow(alpha,2.0)/2.0)) / (2.0*alpha)) +
+                                               (1.0/(double(sigma.length())* p_star *(1 - p_star))));
+    
+    Rcpp::NumericVector sigma_new = sigma;
+    if (accept == true) {
+        sigma_new = sigma + (stepLength * (1 - p_star)) / max(NumericVector::create(200.0, double(ind / sigma.length())));
+    }
+    else {
+        sigma_new = sigma - (stepLength * p_star) / max(NumericVector::create(200.0, double(ind / sigma.length())));
+    }
+
+    Rcpp::NumericMatrix Id_small(epsilon.nrow(), epsilon.ncol());
+    for (int i = 0; i < epsilon.nrow(); i++) {
+        Id_small(i, i) = pow(sigma_new(i), 2.0) * double(1/ind);
+    }
+    if (ind <= 100) {
+        return chol((Rcpp::as<arma::mat>(epsilon) * Rcpp::as<arma::mat>(epsilon).t()) +
+                    Rcpp::as<arma::mat>(Id_small)).t();
+    }
+    else {
+        arma::mat X_arma = Rcpp::as<arma::mat>(X);
+        int n = X_arma.n_rows;//, p = X_arma.n_cols;
+        arma::mat centered = X_arma - arma::repmat(arma::mean(X_arma, 0), n, 1);
+        arma::mat covariance = (centered.t() * centered) / double(n - 1);
+        return chol(covariance + Rcpp::as<arma::mat>(Id_small)).t();
+    }
 }
 
 Rcpp::NumericVector RWproposal(NumericVector par, NumericMatrix epsilon) {
   
-  NumericVector mu(par.length());
   arma::mat     Sigma = Rcpp::as<arma::mat>( epsilon );
-  Rcpp::NumericVector d = as<NumericVector>(wrap(mvrnormArma(1, mu, Sigma)));
+  Rcpp::NumericVector d = as<NumericVector>(wrap(mvrnormArma(1, Sigma)));
   Rcpp::NumericVector prop = par + d;
   
   return prop;
@@ -49,9 +73,8 @@ Rcpp::NumericVector RWproposal(NumericVector par, NumericMatrix epsilon) {
 
 Rcpp::NumericVector Bproposal(NumericVector par, NumericVector gr, NumericMatrix epsilon) {
   
-  NumericVector mu(par.length());
   arma::mat     Sigma = Rcpp::as<arma::mat>( epsilon );
-  Rcpp::NumericVector d = as<NumericVector>(wrap(mvrnormArma(1, mu, Sigma)));
+  Rcpp::NumericVector d = as<NumericVector>(wrap(mvrnormArma(1, Sigma)));
   Rcpp::NumericVector Pr = 1 / (1 + exp(-(d * gr)));
   Rcpp::NumericVector u = runif(par.length());
   Rcpp::NumericVector B(par.length());
@@ -84,6 +107,7 @@ SEXP harmwg(Function Model, List Data, int Iterations, int Status,
   Rcpp::NumericMatrix thinned = clone(samples);
   Rcpp::NumericMatrix postpred = clone(PPD);
   Rcpp::NumericMatrix epsilon = clone(Sigma);
+  Rcpp::NumericVector sigma = wrap(diagvec(Rcpp::as<arma::mat>(epsilon) * Rcpp::as<arma::mat>(epsilon).t()));
   RNGScope scope;
   int t_iter = 0, fins = 0, mcols = Mon.ncol();
   double alpha = .0;
@@ -131,8 +155,10 @@ SEXP harmwg(Function Model, List Data, int Iterations, int Status,
         postpred(t_iter, _) = as<Rcpp::NumericVector>(Mo0["yhat"]);
         Dev(t_iter, _) = as<Rcpp::NumericVector>(Mo0["Dev"]);
         Mon(t_iter, _) = as<Rcpp::NumericVector>(Mo0["Monitor"]);
-        if((iter < Adapt) & ((t_iter + 1) > 20)) {
-          epsilon = covMat( thinned(Range(0,t_iter), _) );
+        if(iter < Adapt) {
+            sigma = as<NumericVector>(wrap(diagvec(Rcpp::as<arma::mat>(epsilon) * Rcpp::as<arma::mat>(epsilon).t())));
+            bool update_sigma = .50 < Acceptance;
+            epsilon = as<NumericMatrix>(wrap(sigmaEstimate(thinned(Range(0, t_iter), _), epsilon, (t_iter + 1), sigma, update_sigma)));
         }
     }
   }
@@ -161,6 +187,7 @@ SEXP harm(Function Model, List Data, int Iterations, int Status,
   Rcpp::NumericMatrix thinned = clone(samples);
   Rcpp::NumericMatrix postpred = clone(PPD);
   Rcpp::NumericMatrix epsilon = clone(Sigma);
+  Rcpp::NumericVector sigma = wrap(diagvec(Rcpp::as<arma::mat>(epsilon) * Rcpp::as<arma::mat>(epsilon).t()));
   RNGScope scope;
   
   // Run MCMC algorithm
@@ -191,8 +218,10 @@ SEXP harm(Function Model, List Data, int Iterations, int Status,
         postpred(t_iter, _) = as<Rcpp::NumericVector>(Mo0["yhat"]);
         Dev(t_iter, _) = as<Rcpp::NumericVector>(Mo0["Dev"]);
         Mon(t_iter, _) = as<Rcpp::NumericVector>(Mo0["Monitor"]);
-        if((iter < Adapt) & ((t_iter + 1) > 20)) {
-          epsilon = covMat( thinned(Range(0,t_iter), _) );
+        if (iter < Adapt) {
+            sigma = as<NumericVector>(wrap(diagvec(Rcpp::as<arma::mat>(epsilon) * Rcpp::as<arma::mat>(epsilon).t())));
+            bool update_sigma = u < alpha;
+            epsilon = as<NumericMatrix>(wrap(sigmaEstimate(thinned(Range(0, t_iter), _), epsilon, (t_iter + 1), sigma, update_sigma)));
         }
     }
   }
@@ -221,6 +250,7 @@ SEXP gcharm(Function Model, List Data, int Iterations, int Status,
   Rcpp::NumericMatrix thinned = clone(samples);
   Rcpp::NumericMatrix postpred = clone(PPD);
   Rcpp::NumericMatrix epsilon = clone(Sigma);
+  Rcpp::NumericVector sigma = wrap(diagvec(Rcpp::as<arma::mat>(epsilon) * Rcpp::as<arma::mat>(epsilon).t()));
   RNGScope scope;
   NumericVector prop0 = as<Rcpp::NumericVector>(Mo0["parm"]);
   NumericVector gr0 = grad(Model, Data, as<Rcpp::NumericVector>(Mo0["parm"]), h);
@@ -253,8 +283,10 @@ SEXP gcharm(Function Model, List Data, int Iterations, int Status,
       postpred(t_iter, _) = as<Rcpp::NumericVector>(Mo0["yhat"]);
       Dev(t_iter, _) = as<Rcpp::NumericVector>(Mo0["Dev"]);
       Mon(t_iter, _) = as<Rcpp::NumericVector>(Mo0["Monitor"]);
-      if((iter < Adapt) & ((t_iter + 1) > 20)) {
-        epsilon = covMat( thinned(Range(0,t_iter), _) );
+      if (iter < Adapt) {
+          sigma = as<NumericVector>(wrap(diagvec(Rcpp::as<arma::mat>(epsilon) * Rcpp::as<arma::mat>(epsilon).t())));
+          bool update_sigma = u < alpha;
+          epsilon = as<NumericMatrix>(wrap(sigmaEstimate(thinned(Range(0, t_iter), _), epsilon, (t_iter + 1), sigma, update_sigma)));
       }
     }
   }
@@ -299,7 +331,7 @@ SEXP ohss(Function Model, List Data, int Iterations, int Status,
     Rcpp::NumericVector V_eig = as<Rcpp::NumericVector>(wrap(eigval)).sort(true);
     Rcpp::NumericMatrix DiagCovar((int)floor(Iterations/Thinning) + 1, LIV);
     for (int i = 0; i < LIV; i++) {
-        DiagCovar(0,i) = S_eig(i, i);
+      DiagCovar(0,i) = S_eig(i, i);
     }
     double tuning = 1.0;
     double edge_scale = 5.0;

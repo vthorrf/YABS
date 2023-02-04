@@ -7,7 +7,7 @@ The `MCMC` function is a basic user interface for calling the samplers provided 
 \usage{
 MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
      status=NULL, thinning=NULL, adapt=NULL, nchains=1, parallel=FALSE,
-     cores=NULL, update_progress=NULL, opt.init=TRUE, par.cov=NULL,
+     cores=NULL, update.progress=NULL, opt.init=TRUE, par.cov=NULL,
      algo=c("mwg","rwm","barker","ohss"))
 }
 \arguments{

@@ -2,8 +2,11 @@
 summary.YABS <- function(object, ...) {
   ### Header
   cat("YABS output generated with ", object$mcmc.info$algorithm," algorithm.\n",sep="")
-  cat("Estimates based on 1 chain of ", object$mcmc.info$n.iter," iterations,\n",sep="")
-  cat("burn-in = ", object$mcmc.info$n.burnin, " iterations and thin rate = ",
+  cat("Estimates based on ", object$mcmc.info$n.chains,
+      if(object$mcmc.info$n.chains == 1) " chain of " else " chains of ",
+      object$mcmc.info$n.iter," iterations,\n",sep="")
+  cat("burn-in = ", object$mcmc.info$n.burnin, " iterations, adaptation = ",
+      object$mcmc.info$n.adapt," iterations, and thin rate = ",
       object$mcmc.info$n.thin,",\n",sep="")
   cat("yielding ",nrow(object$posterior)," total samples from the joint posterior.\n",sep="")
   cat("MCMC ran for ",sprintf("%.3f",object$mcmc.info$elapsed.mins[1])," minutes.\n\n",sep="")
