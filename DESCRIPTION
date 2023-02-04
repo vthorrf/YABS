@@ -14,9 +14,11 @@ Encoding: UTF-8
 BugReports: https://github.com/vthorrf/YABS/issues
 RoxygenNote: 7.1.1
 Imports: Rcpp (>= 1.0.9),
+	   MASS (>= 7.3-58.1),
          Matrix (>= 1.5-1),
          parallel (>= 4.2.2),
-         pbapply (>= 1.5-0)
+         pbapply (>= 1.5-0),
+	   stats (>= 4.2.2)
 Depends: coda (>= 0.19-4)
 Suggests: rstan,
           jagsUI,
@@ -24,3 +26,4 @@ Suggests: rstan,
           fmcmc
 LinkingTo: Rcpp,
            RcppArmadillo
+
