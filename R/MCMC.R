@@ -190,34 +190,36 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
   
   ################=============== Results
   ## Posterior list
+  keepers <- {1:nrow(fits[[1]]$thinned)}[{1:nrow(fits[[1]]$thinned)} %!in% seq_len(BURN)]
+  if(adapt > 0) {
+    keepers[length(keepers)] <- sample(keepers[-length(keepers)], size=1, replace=F)
+  }
   post_list <- lapply(fits, function(g) {
-    temp0 <- as.matrix(g$thinned[{1:nrow(g$thinned)} %!in% seq_len(BURN),])
-    dev <- unlist(g$Dev[{1:nrow(g$Dev)} %!in% seq_len(BURN),])
+    temp0 <- as.matrix(g$thinned[keepers,])
+    dev <- unlist(g$Dev[keepers,])
     temp1 <- cbind(temp0, dev, {{2 * liv} + dev})
     colnames(temp1) <- c(Data$parm.names, "deviance", "aic")
     return(temp1)
   })
   ## Posterior predictive
   ppred <- lapply(fits, function(g) {
-    as.matrix(g$postpred[{1:nrow(g$postpred)} %!in% seq_len(BURN),])
+    as.matrix(g$postpred[keepers,])
+    #as.matrix(g$postpred[{1:nrow(g$postpred)} %!in% seq_len(BURN),])
   })
   ## Additionally monitored variables/parameters
   Monitor <- lapply(fits, function(g) {
-    as.matrix(g$Mon[{1:nrow(g$Mon)} %!in% seq_len(BURN),])
+    as.matrix(g$Mon[keepers,])
+    #as.matrix(g$Mon[{1:nrow(g$Mon)} %!in% seq_len(BURN),])
   })
   ## LogPosterior
   logPost <- lapply(post_list, function(g) {
     apply(g, 1, post)
   })
-  ## Deviance
-  deviance <- lapply(post_list, function(g) {
-    g[,"deviance"]
-  })
   ## Posterior data frame
   posterior <- data.frame(do.call("rbind",post_list))
   ## Calculate DIC
-  Dbar      <- mean(unlist(deviance))
-  pD        <- var(unlist(deviance))/2
+  Dbar      <- mean(posterior[,"deviance"])
+  pD        <- var(posterior[,"deviance"])/2
   DIC       <- list(DIC=Dbar + pD, Dbar=Dbar, pD=pD)
   ## Acceptance rate
   accRate   <- mean(sapply(fits, function(g) g$Acc))
