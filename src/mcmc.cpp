@@ -22,6 +22,57 @@ Rcpp::NumericVector grad(Function Model, List Data, NumericVector par, double h)
   return out;
 }
 
+int binCoef(int n, int k) {
+    if (k == 0 || k == n)
+        return 1;
+    return binCoef(n - 1, k - 1) + binCoef(n - 1, k);
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericVector gradN(Function Model, List Data, NumericVector par, double h = 1e-6, int order = 1) {
+    int m = par.length();
+    NumericMatrix df(m, order);
+    IntegerVector posit(m);
+    for (int i = 0; i < m; ++i) {
+        posit[i] = i;
+    }
+    for (int i = 0; i < m; ++i) {
+        for (int j = 0; j < order; ++j) {
+            NumericVector temp(m);
+            for (int k = 0; k < m; ++k) {
+                double t0;
+                if (posit[k] == i) {
+                    t0 = 1.0;
+                }
+                else {
+                    t0 = 0.0;
+                }
+                temp[k] = par[k] + (t0 * double(j + 1) * h);
+            }
+            df(i, j) = pow(-1.0, double(order - j + 1)) * double(binCoef(order, j + 1)) * as<double>(as<List>(Model(temp, Data))["LP"]);
+            if (!arma::is_finite(df(i, j))) {
+                df(i, j) = 0;
+            }
+        }
+    }
+
+    NumericMatrix Final(m, order + 1);
+    double fix = as<double>(as<List>(Model(par, Data))["LP"]) * pow(-1, order % 2);
+    for (int i = 0; i < m; ++i) {
+        Final(i, 0) = fix;
+    }
+    for (int j = 1; j < (order + 1); ++j) {
+        Final(_, j) = df(_, (j - 1));
+    }
+    NumericVector out(m);
+    for (int i = 0; i < m; ++i) {
+        out[i] = sum(Final(i, _)) / h;
+    }
+
+    return out;
+}
+
+
 arma::mat mvrnormArma(int n, arma::mat sigma) {
   int p = sigma.n_cols;
   arma::mat Y = arma::randn(n, p);

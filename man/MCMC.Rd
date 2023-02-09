@@ -8,7 +8,7 @@ The `MCMC` function is a basic user interface for calling the samplers provided 
 MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
      status=NULL, thinning=NULL, adapt=NULL, nchains=1, parallel=FALSE,
      cores=NULL, update.progress=NULL, opt.init=TRUE, par.cov=NULL,
-     algo=c("mwg","rwm","barker","ohss"))
+     hessian=FALSE, control=list(fnscale=-1), algo=c("mwg","rwm","barker","ohss"))
 }
 \arguments{
    \item{Model}{The user provided model. It should always output a list containing the following named objects: (i) LP, the logposterior; (ii) Dev, the deviance; (iii) Monitor, a single value or a vector of values to be monitored; (iv) yhat, values simulated from the posterior; and (v) parm, the value or vector with the parameters.}
@@ -25,6 +25,8 @@ MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
    \item{update.progress}{How many times should the progress bar be updated when running in parallel? Note that setting this to a large value should result in the worse performance, due to additional overhead communicating among the parallel processes.}
    \item{opt.init}{If TRUE, the initial values will be improved (i.e., set closer to the maximum a posteriori) and the initial step sizes will be estimated with the negative inverse Hessian of the MAP estimates.}
    \item{par.cov}{An optional covariance matrix of the parameters (i.e., the diagonal represents the step sizes for the parameters to be estimated using the MCMC algorithms).}
+   \item{hessian}{If opt.init = TRUE, this argument indicates if a numerically differentiated Hessian matrix be used for the initial step sizes. Otherwise, only the diagonal matrix of the second-order partial derivatives will be used for the initial step sizes.}
+   \item{control}{If opt.init = TRUE, a list of control parameters to be passed to the `optim` function from the stats package. Should always include fnscale = -1.}
    \item{algo}{The MCMC algorithm to be used. Currently, the following are implemented: (i) "mwg", Metropolis-Within-Gibbs; (ii) "rwm", Random-walk Metropolis; (iii) "barker", Barker Proposal Metropolis; and (iv) "ohss", Oblique Hyperrectangle Slice Sampler. If no (or more than one) algorithm is selected, defaults to "rwm".}
 }
 \value{

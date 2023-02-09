@@ -1,7 +1,7 @@
 MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
                  status=NULL, thinning=NULL, adapt=NULL, nchains=1, parallel=FALSE,
                  cores=NULL, update.progress=NULL, opt.init=TRUE, par.cov=NULL,
-                 algo=c("mwg","rwm","barker","ohss")) {
+                 hessian=FALSE, control=list(fnscale=-1), algo=c("mwg","rwm","barker","ohss")) {
   ################=============== Initial settings
   ## Default values for the arguments and some error handling
   if(length(algo) != 1)        algo            <- NULL
@@ -34,15 +34,23 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
     } else {
       cat("Improving initial values and finding initial step sizes with MAP estimation.\n")
     }
-    if(!is.null(par.cov)) Hessian <- FALSE else Hessian <- TRUE
+    if(!is.null(par.cov)) {
+        Hessian <- FALSE
+    } else if (!hessian) {
+        Hessian <- FALSE
+    } else Hessian <- TRUE
     MAP <- tryCatch(optim( Initial.Values, post, method="L-BFGS",
-                           control=list(fnscale=-1), hessian=Hessian ),
+                           control=control, hessian=Hessian ),
                     error=function(e) {
                       optim( Initial.Values, post, method="BFGS",
-                             control=list(fnscale=-1), hessian=Hessian )
+                             control=control, hessian=Hessian )
                     })
-    if(!is.null(par.cov)) epsilon <- par.cov else epsilon <- tryCatch( solve(-MAP$hessian),
-                                                                       error=function(e) ginv(-MAP$hessian) )
+    if(!is.null(par.cov)) {
+      epsilon <- par.cov
+    } else if (!hessian) {
+      epsilon <- tryCatch( solve(-diag(gradN(Model, Data, MAP$par, order=2)*1e6)),
+       error=function(e) ginv(-diag(gradN(Model, Data, MAP$par, order=2)*1e6)) )
+    } else epsilon <- tryCatch( solve(-MAP$hessian), error=function(e) ginv(-MAP$hessian) )
     if(min(eigen(epsilon)$values) < 0) {
       epsilon <- tryCatch( nearPD(epsilon, base.matrix=T)$mat, 
                            error=function(e) epsilon )

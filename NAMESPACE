@@ -1,6 +1,8 @@
 #exportPattern("^[[:alpha:]]+")
 useDynLib(YABS, .registration=TRUE)
 exportPattern("MCMC")
+exportPattern("BF")
+exportPattern("MAP_pvalue")
 exportPattern("print.YABS")
 exportPattern("summary.YABS")
 S3method(print, YABS)
