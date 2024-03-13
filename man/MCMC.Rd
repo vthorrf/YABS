@@ -5,13 +5,13 @@
 The `MCMC` function is a basic user interface for calling the samplers provided with the YABS package. The user provides a Model, a Data list, and Initial values (optional if PGF is provided). The function compiles the information and sends it to internal samplers, written in C++. The results are consolidated and summarized to be output as an object of class YABS.
 }
 \usage{
-MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
-     status=NULL, thinning=NULL, adapt=NULL, nchains=1, parallel=FALSE,
-     cores=NULL, update.progress=NULL, opt.init=TRUE, par.cov=NULL,
-     hessian=FALSE, control=list(fnscale=-1), algo=c("mwg","rwm","barker","ohss"))
+MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL, status=NULL,
+     thinning=NULL, adapt=NULL, nchains=1, parallel=FALSE, cores=NULL, update.progress=NULL,
+     pckgs=NULL, opt.init=TRUE, par.cov=NULL, hessian=FALSE, control=list(fnscale=-1),
+     algo=c("mwg","rwm","barker","ohss"))
 }
 \arguments{
-   \item{Model}{The user provided model. It should always output a list containing the following named objects: (i) LP, the logposterior; (ii) Dev, the deviance; (iii) Monitor, a single value or a vector of values to be monitored; (iv) yhat, values simulated from the posterior; and (v) parm, the value or vector with the parameters.}
+   \item{Model}{The user provided model. It should be a function that always output a list containing the following named objects: (i) LP, the logposterior; (ii) Dev, the deviance; (iii) Monitor, a single value or a vector of values to be monitored; (iv) yhat, values simulated from the posterior; and (v) parm, the value or vector with the parameters.}
    \item{Data}{A named list of the data objects required by the model. Should always include: (i) parm.names, the name of the parameters; (ii) pos.parameter, the positions of each group of parameters (see the Example); (iii) PGF, the Parameter-Generating Function (PGF) if initial values for the parameters are not provided; and (iv) mon.names, the names of values monitored (see the Example).}
    \item{Initial.Values}{A vector of initial values equal in length to the number of parameters. If it is not provided, it will use the PGF provided in Data to generated valid initial values.}
    \item{iterations}{The number of iterations to be saved (excluding burning and thinning).}
@@ -23,6 +23,7 @@ MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
    \item{parallel}{If TRUE, run MCMC chains in parallel on multiple CPU cores.}
    \item{cores}{If parallel=TRUE, specify the number of CPU cores used.}
    \item{update.progress}{How many times should the progress bar be updated when running in parallel? Note that setting this to a large value should result in the worse performance, due to additional overhead communicating among the parallel processes.}
+   \item{pckgs}{If parallel=TRUE and if `Model` uses non-base-R functions, this is a character vector with the name of the packages from where the functions come from.}
    \item{opt.init}{If TRUE, the initial values will be improved (i.e., set closer to the maximum a posteriori) and the initial step sizes will be estimated with the negative inverse Hessian of the MAP estimates.}
    \item{par.cov}{An optional covariance matrix of the parameters (i.e., the diagonal represents the step sizes for the parameters to be estimated using the MCMC algorithms).}
    \item{hessian}{If opt.init = TRUE, this argument indicates if a numerically differentiated Hessian matrix be used for the initial step sizes. Otherwise, only the diagonal matrix of the second-order partial derivatives will be used for the initial step sizes.}

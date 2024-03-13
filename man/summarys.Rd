@@ -2,22 +2,22 @@
 % Please edit documentation in R/summarys.R
 \name{summarys}
 \alias{summarys}
-\alias{summary.YABS}
+\alias{summary.YABS_MCMC}
 \title{S3Methods for summarying}
 \usage{
-\method{summary}{YABS}(object, ...)
+\method{summary}{YABS_MCMC}(object, ...)
 
 }
 \arguments{
-\item{object}{An \code{YABS} object.}
+\item{object}{An \code{YABS_MCMC} object.}
 
 \item{...}{Arguments to be passed to or from other methods.}
 }
 \value{
-Summarise \code{YABS} object
+Summarise \code{YABS_MCMC} object
 }
 \description{
-Summaries for \code{YABS} objects
+Summaries for \code{YABS_MCMC} objects
 }
 \author{
 Vithor Rosa Franco <vithorfranco@gmail.com>

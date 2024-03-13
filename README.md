@@ -10,6 +10,8 @@ This package should be considered experimental at this point of development. The
 * Barker Proposal Metropolis (`algo = "barker"` argument)
 * Oblique Hyperrectangle Slice Sampler (`algo = "ohss"` argument)
 
+We also implemented a Laplace Approximation method, with Sampling-Importance Resampling.
+
 # Installation #
 
 Using the 'remotes' package:

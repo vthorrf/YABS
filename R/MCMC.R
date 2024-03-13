@@ -1,7 +1,7 @@
-MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
-                 status=NULL, thinning=NULL, adapt=NULL, nchains=1, parallel=FALSE,
-                 cores=NULL, update.progress=NULL, opt.init=TRUE, par.cov=NULL,
-                 hessian=FALSE, control=list(fnscale=-1), algo=c("mwg","rwm","barker","ohss")) {
+MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL, status=NULL,
+                 thinning=NULL, adapt=NULL, nchains=1, parallel=FALSE, cores=NULL, update.progress=NULL,
+                 pckgs=NULL, opt.init=TRUE, par.cov=NULL, hessian=FALSE, control=list(fnscale=-1),
+                 algo=c("mwg","rwm","barker","ohss")) {
   ################=============== Initial settings
   ## Default values for the arguments and some error handling
   if(length(algo) != 1)        algo            <- NULL
@@ -94,6 +94,11 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
     if(parallel) {
       cat("Running ", nchains," chains in parallel\n", sep="")
       cl <- makeCluster(cores)
+      if(!is.null(pckgs)) {
+        par.setup <- parLapply(cl, 1:length(cl), function(xx) {
+          lapply(pckgs, require, character.only = TRUE)
+        })
+      }
       pboptions(nout=update.progress)
       fits <- pblapply(X=1:nchains, function(i) {
         temp0 <- Model(Initial.Values[i,], Data)
@@ -121,6 +126,11 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
     if(parallel) {
       cat("Running ", nchains," chains in parallel\n", sep="")
       cl <- makeCluster(cores)
+      if(!is.null(pckgs)) {
+        par.setup <- parLapply(cl, 1:length(cl), function(xx) {
+          lapply(pckgs, require, character.only = TRUE)
+        })
+      }
       pboptions(nout=update.progress)
       fits <- pblapply(X=1:nchains, function(i) {
         temp0 <- Model(Initial.Values[i,], Data)
@@ -148,6 +158,11 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
     if(parallel) {
       cat("Running ", nchains," chains in parallel\n", sep="")
       cl <- makeCluster(cores)
+      if(!is.null(pckgs)) {
+        par.setup <- parLapply(cl, 1:length(cl), function(xx) {
+          lapply(pckgs, require, character.only = TRUE)
+        })
+      }
       pboptions(nout=update.progress)
       fits <- pblapply(X=1:nchains, function(i) {
         temp0 <- Model(Initial.Values[i,], Data)
@@ -175,6 +190,11 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
     if(parallel) {
       cat("Running ", nchains," chains in parallel\n", sep="")
       cl <- makeCluster(cores)
+      if(!is.null(pckgs)) {
+        par.setup <- parLapply(cl, 1:length(cl), function(xx) {
+          lapply(pckgs, require, character.only = TRUE)
+        })
+      }
       pboptions(nout=update.progress)
       fits <- pblapply(X=1:nchains, function(i) {
         temp0 <- Model(Initial.Values[i,], Data)
@@ -206,7 +226,13 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
     temp0 <- as.matrix(g$thinned[keepers,])
     dev <- unlist(g$Dev[keepers,])
     temp1 <- cbind(temp0, dev, {{2 * liv} + dev})
-    colnames(temp1) <- c(Data$parm.names, "deviance", "aic")
+    nomes <- c(Data$parm.names, "deviance", "aic")
+    if(length(nomes) == ncol(temp1)) {
+      colnames(temp1) <- nomes
+    } else {
+      colnames(temp1) <- paste0("V_",ncol(temp1))
+      warning("***Something wrong happened while naming the posterior samples. Proceed with caution!***\n")
+    }
     return(temp1)
   })
   ## Posterior predictive
@@ -266,7 +292,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
                     PSRF=GD$psrf[,1],
                     MPSRF=GD$mpsrf,
                     mcmc.info=mcmc.info)
-  class(Result) <- "YABS"
+  class(Result) <- "YABS_MCMC"
   return(Result)
 }
 

@@ -2,10 +2,10 @@
 % Please edit documentation in R/prints.R
 \name{prints}
 \alias{prints}
-\alias{print.YABS}
+\alias{print.YABS_MCMC}
 \title{S3Methods for Printing}
 \usage{
-\method{print}{YABS}(x, ...)
+\method{print}{YABS_MCMC}(x, ...)
 
 }
 \arguments{
@@ -14,10 +14,10 @@
 \item{...}{Additional arguments}
 }
 \value{
-Prints \code{YABS} object
+Prints \code{YABS_MCMC} object
 }
 \description{
-Prints for \code{YABS} objects
+Prints for \code{YABS_MCMC} objects
 }
 \author{
 Vithor Rosa Franco <vithorfranco@gmail.com>

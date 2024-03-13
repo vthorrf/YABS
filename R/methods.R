@@ -1,5 +1,5 @@
 #### Summary Method
-summary.YABS <- function(object, ...) {
+summary.YABS_MCMC <- function(object, ...) {
   ### Header
   cat("YABS output generated with ", object$mcmc.info$algorithm," algorithm.\n",sep="")
   cat("Estimates based on ", object$mcmc.info$n.chains,
@@ -61,7 +61,7 @@ summary.YABS <- function(object, ...) {
 }
 
 #### Print Method
-print.YABS <- function(x, ...) {
+print.YABS_MCMC <- function(x, ...) {
   ### Header
   cat("YABS output generated with ", x$mcmc.info$algorithm," algorithm.\n",sep="")
   cat("MCMC ran for ",sprintf("%.3f",x$mcmc.info$elapsed.mins[1])," minutes.\n\n",sep="")
