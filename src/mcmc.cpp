@@ -1,11 +1,16 @@
 // [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::depends(RcppEigen)]]
 #include <RcppArmadillo.h>
 #include <RcppArmadilloExtensions/sample.h>
+#include <RcppEigen.h>
+#include <Eigen/Dense>
+#include <cmath>
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::plugins(unwindProtect)]]
 
 using namespace Rcpp;
 using namespace arma;
+using namespace Eigen;
 
 // ====================================Supporting functions====================================
 Rcpp::NumericVector grad(Function Model, List Data, NumericVector par, double h) {
@@ -71,7 +76,6 @@ Rcpp::NumericVector gradN(Function Model, List Data, NumericVector par, double h
 
     return out;
 }
-
 
 arma::mat mvrnormArma(int n, arma::mat sigma) {
   int p = sigma.n_cols;

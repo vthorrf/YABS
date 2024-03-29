@@ -2,7 +2,7 @@
 \alias{MCMC}
 \title{Call the desired sampler}
 \description{
-The `MCMC` function is a basic user interface for calling the samplers provided with the YABS package. The user provides a Model, a Data list, and Initial values (optional if PGF is provided). The function compiles the information and sends it to internal samplers, written in C++. The results are consolidated and summarized to be output as an object of class YABS.
+The `MCMC` function is a basic user interface for calling the samplers provided with the YABS package. The user provides a Model, a Data list, and Initial values (optional if PGF is provided). The function compiles the information and sends it to internal samplers, written in C++. The results are consolidated and summarized to be output as an object of class YABS_MCMC.
 }
 \usage{
 MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL, status=NULL,
@@ -31,7 +31,7 @@ MCMC(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL, status=NULL
    \item{algo}{The MCMC algorithm to be used. Currently, the following are implemented: (i) "mwg", Metropolis-Within-Gibbs; (ii) "rwm", Random-walk Metropolis; (iii) "barker", Barker Proposal Metropolis; and (iv) "ohss", Oblique Hyperrectangle Slice Sampler. If no (or more than one) algorithm is selected, defaults to "rwm".}
 }
 \value{
-A list of class YABS containing:
+A list of class YABS_MCMC containing:
 1. posterior, the posterior distribution of the parameters, as well as the deviance and AIC;
 2. LP, the posterior distribution of the monitored values;
 3. DIC, the calculated DIC and its components (Dbar and pD);

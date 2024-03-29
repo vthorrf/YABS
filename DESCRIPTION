@@ -8,7 +8,7 @@ Description: Provides general purpose tools for helping users to implement Bayes
              models using R functions. Currently, Metropolis-within-Gibbs, Random-walk
              Metropolis, Barker Proposal Metropolis, and Oblique Hyperrectangle
              Slice Sampler are the MCMC algorithms implemented. Other MCMC algorithms may be
-             implemented in the future. There is also an implementation of Laplace Approximation
+             implemented in the future. We also included an implementation of Laplace Approximation
              with Sampling-Importance Resampling.
 License: file LICENSE
 Encoding: UTF-8
@@ -27,5 +27,6 @@ Suggests: rstan,
           nimble,
           fmcmc
 LinkingTo: Rcpp,
-           RcppArmadillo
+           RcppArmadillo,
+	   RcppEigen
 
