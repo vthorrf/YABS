@@ -1,6 +1,6 @@
 LA <- function(Model, Data, Initial.Values=NULL, par.cov=NULL, SIR=TRUE,
                iterations=NULL, nearPD=TRUE, check.convergence=FALSE, 
-               method = c("Nelder-Mead", "BFGS", "CG", "L-BFGS", "SANN", "Brent", "nlm", "nlminb"),
+               method = c("Nelder-Mead", "BFGS", "CG", "L-BFGS", "L-BFGS-B", "SANN", "Brent", "nlm", "nlminb"),
                lower = -Inf, upper = Inf, control = list(), hessian = FALSE) {
   ################=============== Initial settings
   ## Default values for the arguments and some error handling
@@ -90,7 +90,11 @@ LA <- function(Model, Data, Initial.Values=NULL, par.cov=NULL, SIR=TRUE,
     LP <- vector("numeric", length=iterations)
     Dev <- vector("numeric", length=iterations)
     for (i in 1:iterations) {
-      temp <- Model(posterior[i, ], Data)
+      if(i == 1) {
+        temp <- Model(MAP, Data)
+      } else {
+        temp <- Model(posterior[i, ], Data)
+      }
       LP[i] <- temp[["LP"]]
       Dev[i] <- temp[["Dev"]]
       yhat[i,] <- temp[["yhat"]]

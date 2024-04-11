@@ -8,7 +8,11 @@ samplingImportanceResampling <- function(MAP, VarCov, Model, Data, iterations) {
   Dev <- vector("numeric", length=iterations)
   # Calculate log-posterior, deviance, and predictions
   for (i in 1:iterations) {
-    temp <- Model(theta[i, ], Data)
+    if(i == 1) {
+      temp <- Model(MAP, Data)
+    } else {
+      temp <- Model(theta[i, ], Data)
+    }
     LP[i] <- temp[["LP"]]
     Dev[i] <- temp[["Dev"]]
     yhat[i,] <- temp[["yhat"]]
