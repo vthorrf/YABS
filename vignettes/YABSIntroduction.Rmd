@@ -2,7 +2,9 @@
 title: "YABS Introduction"
 author: "Vithor Rosa Franco"
 date: "2023-02-03"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -94,7 +96,9 @@ Model <- function(parm, Data){
   
   ### Log-Posterior
   LP <- LL + Lp
-  Modelout <- list(LP=LP, Dev=-2*LL, Monitor=c(LL, Lp), yhat=rnorm(n=Data$n, mean=mu, sd=sigma), parm=parm)
+  Modelout <- list(LP=LP, Dev=-2*LL, Monitor=c(LL, Lp),
+                   yhat=rnorm(n=Data$n, mean=mu, sd=sigma),
+                   parm=parm)
   return(Modelout)
 }
 Model <- compiler::cmpfun(Model)

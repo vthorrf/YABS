@@ -103,10 +103,10 @@ LA <- function(Model, Data, Initial.Values=NULL, par.cov=NULL, SIR=TRUE,
     #temp <- Model(MAP, Data)
     #LP <- temp[["LP"]]
     #Dev <- temp[["Dev"]]
-    AIC <- Dev + 2 * length(MAP)
     #yhat <- temp[["yhat"]]
     #Monitor <- temp[["Monitor"]]
   }
+  aic <- Dev + 2 * length(MAP)
   stopTime = proc.time()
   elapsedTime = stopTime - startTime
   
@@ -129,7 +129,7 @@ LA <- function(Model, Data, Initial.Values=NULL, par.cov=NULL, SIR=TRUE,
                       LP=LP[indices],
                       Monitor=Monitor[indices,],
                       Dev=Dev,
-                      AIC=AIC,
+                      AIC=aic,
                       DIC=DIC,
                       ESS=ESS,
                       convergence={fit$convergence == 0})
