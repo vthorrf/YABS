@@ -5,19 +5,19 @@ gradN <- function(Model, Data, par, h = 1e-6, order = 1L) {
     .Call(`_YABS_gradN`, Model, Data, par, h, order)
 }
 
-harmwg <- function(Model, Data, Iterations, Status, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma) {
-    .Call(`_YABS_harmwg`, Model, Data, Iterations, Status, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma)
+harmwg <- function(Model, Data, Iterations, Status, InitialValues, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma) {
+    .Call(`_YABS_harmwg`, Model, Data, Iterations, Status, InitialValues, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma)
 }
 
-harm <- function(Model, Data, Iterations, Status, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma) {
-    .Call(`_YABS_harm`, Model, Data, Iterations, Status, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma)
+harm <- function(Model, Data, Iterations, Status, InitialValues, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma) {
+    .Call(`_YABS_harm`, Model, Data, Iterations, Status, InitialValues, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma)
 }
 
-gcharm <- function(Model, Data, Iterations, Status, Thinning, ACC, DevianceMat, h, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma) {
-    .Call(`_YABS_gcharm`, Model, Data, Iterations, Status, Thinning, ACC, DevianceMat, h, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma)
+gcharm <- function(Model, Data, Iterations, Status, InitialValues, Thinning, ACC, DevianceMat, h, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma) {
+    .Call(`_YABS_gcharm`, Model, Data, Iterations, Status, InitialValues, Thinning, ACC, DevianceMat, h, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma)
 }
 
-ohss <- function(Model, Data, Iterations, Status, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt) {
-    .Call(`_YABS_ohss`, Model, Data, Iterations, Status, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt)
+ohss <- function(Model, Data, Iterations, Status, InitialValues, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt) {
+    .Call(`_YABS_ohss`, Model, Data, Iterations, Status, InitialValues, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt)
 }
 

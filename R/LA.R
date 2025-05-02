@@ -1,13 +1,14 @@
 LA <- function(Model, Data, Initial.Values=NULL, par.cov=NULL, SIR=TRUE,
                iterations=NULL, nearPD=TRUE, check.convergence=FALSE, 
-               method = c("Nelder-Mead", "BFGS", "CG", "L-BFGS", "L-BFGS-B", "SANN", "Brent", "nlm", "nlminb"),
+               method = c("Nelder-Mead", "BFGS", "CG", "L-BFGS", "L-BFGS-B",
+                          "SANN", "Brent", "nlm", "nlminb"),
                lower = -Inf, upper = Inf, control = list(), hessian = FALSE) {
   ################=============== Initial settings
   ## Default values for the arguments and some error handling
   if(length(method) > 1)       method          <- "nlminb"
   if(is.null(Initial.Values))  Initial.Values  <- Data$PGF(Data)
   if(is.null(iterations))      iterations      <- 1000
-  if(iterations <= 0)          iterations      <- 1000
+  if(iterations < 0)           iterations      <- 1000
   if(!is.matrix(par.cov) & !is.null(par.cov)) stop("'par.cov' should be a matrix. Please check the documentation.")
   
   ################=============== Performing Laplace Approximation
@@ -61,6 +62,7 @@ LA <- function(Model, Data, Initial.Values=NULL, par.cov=NULL, SIR=TRUE,
   } else if(is.null(par.cov) & !hessian) {
     VarCov <-tryCatch( solve(-diag(gradN(Model, Data, MAP, order=2)*1e6)),
                        error=function(e) ginv(-diag(gradN(Model, Data, MAP, order=2)*1e6)) )
+    diag(VarCov) <- abs(diag(VarCov))
   }else if(!is.null(par.cov)) {
     VarCov <- par.cov
   }
@@ -100,11 +102,6 @@ LA <- function(Model, Data, Initial.Values=NULL, par.cov=NULL, SIR=TRUE,
       yhat[i,] <- temp[["yhat"]]
       Monitor[i,] <- temp[["Monitor"]]
     }
-    #temp <- Model(MAP, Data)
-    #LP <- temp[["LP"]]
-    #Dev <- temp[["Dev"]]
-    #yhat <- temp[["yhat"]]
-    #Monitor <- temp[["Monitor"]]
   }
   aic <- Dev + 2 * length(MAP)
   stopTime = proc.time()
@@ -112,37 +109,29 @@ LA <- function(Model, Data, Initial.Values=NULL, par.cov=NULL, SIR=TRUE,
   
   ################=============== Final list of results
   ## Calculate DIC
-  #if(SIR) {
-    Dbar      <- mean(Dev)
-    pD        <- var(Dev)/2
-    DIC       <- list(DIC=Dbar + pD, Dbar=Dbar, pD=pD)
-    ## Effective Sample Size
-    ESS       <- apply(posterior,2,effectiveSize)
-  #}
+  Dbar      <- mean(Dev)
+  pD        <- var(Dev)/2
+  DIC       <- list(DIC=Dbar + pD, Dbar=Dbar, pD=pD)
+  ## Effective Sample Size
+  ESS       <- apply(posterior,2,effectiveSize)
   cat("Done!\n")
   ## List of results
-  #if(SIR) {
-    Result    <- list(posterior=posterior,
-                      MAP=MAP,
-                      VarCov=VarCov,
-                      yhat=yhat[indices,],
-                      LP=LP[indices],
-                      Monitor=Monitor[indices,],
-                      Dev=Dev,
-                      AIC=aic,
-                      DIC=DIC,
-                      ESS=ESS,
-                      convergence={fit$convergence == 0})
-  #} else {
-  #  Result    <- list(MAP=MAP,
-  #                    yhat=yhat,
-  #                    LP=LP,
-  #                    Monitor=Monitor,
-  #                    Dev=Dev,
-  #                    AIC=AIC,
-  #                    convergence={fit$convergence == 0},
-  #                    VarCov=VarCov)
-  #}
+  # Additional info
+  la.info <- list(algorithm=method, n.iter=iterations,
+                  convergence={fit$convergence == 0},
+                  elapsed.mins=elapsedTime/60)
+  # Final results
+  Result    <- list(posterior=posterior,
+                    MAP=MAP,
+                    VarCov=VarCov,
+                    yhat=yhat[indices,],
+                    LP=LP[indices],
+                    Monitor=Monitor[indices,],
+                    Dev=Dev,
+                    AIC=aic,
+                    DIC=DIC,
+                    ESS=ESS,
+                    la.info=la.info)
   class(Result) <- "YABS_LA"
   return(Result)
 }

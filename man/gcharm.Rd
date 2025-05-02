@@ -5,8 +5,8 @@
 Internal function. Samples new values from the logposterior of the user provided model using the Barker Proposal Metropolis MCMC algorithm.
 }
 \usage{
-gcharm(Model, Data, Iterations, Status, Thinning, ACC, DevianceMat, h,
-       LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma)
+gcharm(Model, Data, Iterations, Status, InitialValues, Thinning, ACC,
+       DevianceMat, h, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma)
 }
 \arguments{
    \item{Model}{The user provided model.}

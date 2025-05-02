@@ -5,8 +5,8 @@
 Internal function. Samples new values from the logposterior of the user provided model using the Metropolis-Within Gibbs MCMC algorithm.
 }
 \usage{
-harmwg(Model, Data, Iterations, Status, Thinning, ACC, DevianceMat,
-       LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma)
+harmwg(Model, Data, Iterations, Status, InitialValues, Thinning, ACC,
+       DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma)
 }
 \arguments{
    \item{Model}{The user provided model.}

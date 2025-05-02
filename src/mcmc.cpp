@@ -150,6 +150,7 @@ Rcpp::NumericVector Bproposal(NumericVector par, NumericVector gr, NumericMatrix
 
 // [[Rcpp::export]]
 SEXP harmwg(Function Model, List Data, int Iterations, int Status,
+            NumericVector InitialValues,
             int Thinning, double ACC, NumericMatrix DevianceMat,
             int LIV, NumericMatrix Monitor, List Mo0, NumericMatrix samples,
             NumericMatrix PPD, int Adapt, NumericMatrix Sigma) {
@@ -159,6 +160,7 @@ SEXP harmwg(Function Model, List Data, int Iterations, int Status,
   Rcpp::NumericMatrix Dev = clone(DevianceMat);
   Rcpp::NumericMatrix Mon = clone(Monitor);
   Rcpp::List Mo1 = clone(Mo0);
+  Rcpp::NumericVector auxiliary = clone(InitialValues);
   Rcpp::NumericMatrix thinned = clone(samples);
   Rcpp::NumericMatrix postpred = clone(PPD);
   Rcpp::NumericMatrix epsilon = clone(Sigma);
@@ -176,18 +178,17 @@ SEXP harmwg(Function Model, List Data, int Iterations, int Status,
           floor(as<double>(Mo0["LP"]) * 100) / 100 << std::endl;
     }
     // Random-Scan Componentwise Estimation
-    Rcpp::NumericVector u = runif(LIV),      // Acceptance threshold for each parameter
-                        z = rnorm(LIV);      // New Proposed value
+    Rcpp::NumericVector u = runif(LIV);      // Acceptance threshold for each parameter
     Rcpp::IntegerVector LIVseq = Rcpp::Range(0, LIV - 1), // Indexes to sample
                         s = Rcpp::RcppArmadillo::sample(LIVseq, LIV, false, NumericVector::create());  // Sample of indexes
     // Propose and evaluate new values per parameter
+    Rcpp::NumericVector prop = clone(auxiliary);
+    Rcpp::NumericVector prop1 = RWproposal(prop, epsilon);
     for (int j = 0; j < LIV; j++) {
       // Propose new parameter values
-      Rcpp::List Mo0_ = clone(Mo0);
-      Rcpp::NumericVector prop = Mo0_["parm"];
-      Rcpp::NumericVector prop1 = RWproposal(prop, epsilon);
       prop[s[j]] = prop1[s[j]];
       // Log-Posterior of the proposed state
+      Rcpp::List Mo0_ = clone(Mo0);
       Rcpp::List Mo1 = Model(prop, Data);
       fins = ::R_finite(Mo1["LP"]) + ::R_finite(Mo1["Dev"]);
       for (int m = 0; m < mcols; m++) {
@@ -202,7 +203,11 @@ SEXP harmwg(Function Model, List Data, int Iterations, int Status,
         Mo0 = Mo1;
         Acceptance += 1.0 / LIV;
       }
+      else {
+        prop[s[j]] = auxiliary[s[j]];
+      }
     }
+    auxiliary = clone(prop);
     // Save Thinned Samples
     if ((iter + 1) % Thinning == 0) {
         t_iter = floor((iter + 1) / Thinning) - 1;
@@ -228,6 +233,7 @@ SEXP harmwg(Function Model, List Data, int Iterations, int Status,
 
 // [[Rcpp::export]]
 SEXP harm(Function Model, List Data, int Iterations, int Status,
+          NumericVector InitialValues,
           int Thinning, double ACC, NumericMatrix DevianceMat,
           int LIV, NumericMatrix Monitor, List Mo0, NumericMatrix samples,
           NumericMatrix PPD, int Adapt, NumericMatrix Sigma) {
@@ -239,6 +245,7 @@ SEXP harm(Function Model, List Data, int Iterations, int Status,
   Rcpp::NumericMatrix Dev = clone(DevianceMat);
   Rcpp::NumericMatrix Mon = clone(Monitor);
   Rcpp::List Mo1 = clone(Mo0);
+  Rcpp::NumericVector auxiliary = clone(InitialValues);
   Rcpp::NumericMatrix thinned = clone(samples);
   Rcpp::NumericMatrix postpred = clone(PPD);
   Rcpp::NumericMatrix epsilon = clone(Sigma);
@@ -255,7 +262,7 @@ SEXP harm(Function Model, List Data, int Iterations, int Status,
     }
     // Propose new values
     Rcpp::List          Mo0_ = clone(Mo0);
-    Rcpp::NumericVector prop = RWproposal(Mo0_["parm"], epsilon);
+    Rcpp::NumericVector prop = RWproposal(auxiliary, epsilon);
     Rcpp::List          Mo1 = Model(prop, Data);
     // Accept/Reject
     double u = as<double>(runif(1));
@@ -265,6 +272,7 @@ SEXP harm(Function Model, List Data, int Iterations, int Status,
     if (u < alpha) {
       Mo0 = Mo1;
       Acceptance += 1.0;
+      auxiliary = clone(prop);
     }
     // Save Thinned Samples
     if ((iter + 1) % Thinning == 0) {
@@ -291,6 +299,7 @@ SEXP harm(Function Model, List Data, int Iterations, int Status,
 
 // [[Rcpp::export]]
 SEXP gcharm(Function Model, List Data, int Iterations, int Status,
+            NumericVector InitialValues,
             int Thinning, double ACC, NumericMatrix DevianceMat, double h,
             int LIV, NumericMatrix Monitor, List Mo0, NumericMatrix samples,
             NumericMatrix PPD, int Adapt, NumericMatrix Sigma) {
@@ -302,13 +311,13 @@ SEXP gcharm(Function Model, List Data, int Iterations, int Status,
   Rcpp::NumericMatrix Dev = clone(DevianceMat);
   Rcpp::NumericMatrix Mon = clone(Monitor);
   Rcpp::List Mo1 = clone(Mo0);
+  Rcpp::NumericVector auxiliary = clone(InitialValues);
   Rcpp::NumericMatrix thinned = clone(samples);
   Rcpp::NumericMatrix postpred = clone(PPD);
   Rcpp::NumericMatrix epsilon = clone(Sigma);
   Rcpp::NumericVector sigma = wrap(diagvec(Rcpp::as<arma::mat>(epsilon) * Rcpp::as<arma::mat>(epsilon).t()));
   RNGScope scope;
-  NumericVector prop0 = as<Rcpp::NumericVector>(Mo0["parm"]);
-  NumericVector gr0 = grad(Model, Data, as<Rcpp::NumericVector>(Mo0["parm"]), h);
+  NumericVector gr0 = grad(Model, Data, auxiliary, h);
   
   // Run MCMC algorithm
   for (int iter = 0; iter < Iterations; iter++) {
@@ -319,7 +328,7 @@ SEXP gcharm(Function Model, List Data, int Iterations, int Status,
           floor(as<double>(Mo0["LP"]) * 100) / 100 << std::endl;
     }
     // Propose new values
-    Rcpp::NumericVector prop = Bproposal(as<Rcpp::NumericVector>(Mo0["parm"]), gr0, epsilon);
+    Rcpp::NumericVector prop = Bproposal(auxiliary, gr0, epsilon);
     Rcpp::List Mo1 = Model(prop, Data);
     // Accept/Reject
     double u = as<double>(runif(1));
@@ -330,6 +339,7 @@ SEXP gcharm(Function Model, List Data, int Iterations, int Status,
         Mo0 = Mo1;
         gr0 = grad(Model, Data, prop, h);
         Acceptance += 1.0;
+        auxiliary = clone(prop);
     }
     // Save Thinned Samples
     if ((iter + 1) % Thinning == 0) {
@@ -356,6 +366,7 @@ SEXP gcharm(Function Model, List Data, int Iterations, int Status,
 
 // [[Rcpp::export]]
 SEXP ohss(Function Model, List Data, int Iterations, int Status,
+          NumericVector InitialValues,
           int Thinning, double ACC, NumericMatrix DevianceMat,
           int LIV, NumericMatrix Monitor, List Mo0, NumericMatrix samples,
           NumericMatrix PPD, int Adapt) {
@@ -365,6 +376,7 @@ SEXP ohss(Function Model, List Data, int Iterations, int Status,
     Rcpp::NumericMatrix Dev = clone(DevianceMat);
     Rcpp::NumericMatrix Mon = clone(Monitor);
     Rcpp::List Mo1 = clone(Mo0);
+    Rcpp::NumericVector auxiliary = clone(InitialValues);
     Rcpp::NumericMatrix thinned = clone(samples);
     Rcpp::NumericMatrix postpred = clone(PPD);
     Rcpp::NumericMatrix post = thinned;
@@ -385,6 +397,7 @@ SEXP ohss(Function Model, List Data, int Iterations, int Status,
     Rcpp::NumericMatrix S_eig = as<Rcpp::NumericMatrix>(wrap(eigvec));
     Rcpp::NumericVector V_eig = as<Rcpp::NumericVector>(wrap(eigval)).sort(true);
     Rcpp::NumericMatrix DiagCovar((int)floor(Iterations/Thinning) + 1, LIV);
+    NumericVector prop = clone(auxiliary);
     for (int i = 0; i < LIV; i++) {
       DiagCovar(0,i) = S_eig(i, i);
     }
@@ -429,7 +442,7 @@ SEXP ohss(Function Model, List Data, int Iterations, int Status,
               wt[jter] = as<double>(runif(1, L[jter], U[jter]));
             }
             v = as<arma::mat>(wrap(S_eig)) * (edge_scale * as<arma::vec>(wrap(wt)) % as<arma::vec>(wrap(V_eig)));
-            NumericVector prop = as<Rcpp::NumericVector>(Mo0["parm"]) + as<Rcpp::NumericVector>(wrap(v));
+            prop = auxiliary + as<Rcpp::NumericVector>(wrap(v));
             Mo1 = Model(prop, Data);
             int ALL = 0;
             for (int jter = 0; jter < LIV; jter++) {
@@ -455,9 +468,10 @@ SEXP ohss(Function Model, List Data, int Iterations, int Status,
                 }
             }
         }
+        auxiliary = clone(prop);
         Mo0 = Mo1;
         if (iter < Adapt) {
-            post(iter,_) = as<Rcpp::NumericVector>(Mo0["parm"]);
+            post(iter,_) = auxiliary;
             VarCov = VarCov2;
         }
         // Save Thinned Samples

@@ -102,7 +102,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
       pboptions(nout=update.progress)
       fits <- pblapply(X=1:nchains, function(i) {
         temp0 <- Model(Initial.Values[i,], Data)
-        harmwg(Model, Data, ITER, status, thinning, acceptance,
+        harmwg(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
                DEV, liv, MON, temp0, thinned, postpred, adapt, lt_epsilon)
       }, cl = cl)
       stopCluster(cl)
@@ -110,7 +110,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
       fits <- lapply(1:nchains, function(i) {
         cat("=========Chain number ", i,"=========\n", sep="")
         temp0 <- Model(Initial.Values[i,], Data)
-        harmwg(Model, Data, ITER, status, thinning, acceptance,
+        harmwg(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
                DEV, liv, MON, temp0, thinned, postpred, adapt, lt_epsilon)
       })
     }
@@ -134,7 +134,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
       pboptions(nout=update.progress)
       fits <- pblapply(X=1:nchains, function(i) {
         temp0 <- Model(Initial.Values[i,], Data)
-        harm(Model, Data, ITER, status, thinning, acceptance,
+        harm(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
              DEV, liv, MON, temp0, thinned, postpred, adapt, lt_epsilon)
       }, cl = cl)
       stopCluster(cl)
@@ -142,7 +142,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
       fits <- lapply(1:nchains, function(i) {
         cat("=========Chain number ", i,"=========\n", sep="")
         temp0 <- Model(Initial.Values[i,], Data)
-        harm(Model, Data, ITER, status, thinning, acceptance,
+        harm(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
              DEV, liv, MON, temp0, thinned, postpred, adapt, lt_epsilon)
       })
     }
@@ -166,7 +166,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
       pboptions(nout=update.progress)
       fits <- pblapply(X=1:nchains, function(i) {
         temp0 <- Model(Initial.Values[i,], Data)
-        gcharm(Model, Data, ITER, status, thinning, acceptance,
+        gcharm(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
                DEV, h, liv, MON, temp0, thinned, postpred, adapt, lt_epsilon)
       }, cl = cl)
       stopCluster(cl)
@@ -174,7 +174,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
       fits <- lapply(1:nchains, function(i) {
         cat("=========Chain number ", i,"=========\n", sep="")
         temp0 <- Model(Initial.Values[i,], Data)
-        gcharm(Model, Data, ITER, status, thinning, acceptance,
+        gcharm(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
                DEV, h, liv, MON, temp0, thinned, postpred, adapt, lt_epsilon)
       })
     }
@@ -198,7 +198,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
       pboptions(nout=update.progress)
       fits <- pblapply(X=1:nchains, function(i) {
         temp0 <- Model(Initial.Values[i,], Data)
-        ohss(Model, Data, ITER, status, thinning, acceptance,
+        ohss(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
              DEV, liv, MON, temp0, thinned, postpred, adapt)
       }, cl = cl)
       stopCluster(cl)
@@ -206,7 +206,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
       fits <- lapply(1:nchains, function(i) {
         cat("=========Chain number ", i,"=========\n", sep="")
         temp0 <- Model(Initial.Values[i,], Data)
-        ohss(Model, Data, ITER, status, thinning, acceptance,
+        ohss(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
              DEV, liv, MON, temp0, thinned, postpred, adapt)
       })
     }

@@ -1,22 +1,20 @@
-\name{MAP_pvalue}
-\alias{MAP_pvalue}
-\title{MAP-based p-value}
+\name{WBIC}
+\alias{WBIC}
+\title{Widely Applicable Bayesian Information Criterion}
 \description{
-The MAP-based p-value is defined as the ratio of the posterior density of a reference value to the Maximum A Posteriori (MAP) estimate of the posterior density. Therefore, it indicates how much more likely is the probability of the reference value under the posterior in comparison to the MAP estimate under the same posterior.
+This function calculates an approximation of the Widely Applicable Bayesian Information Criterion (WBIC; Watanabe, 2013).
 }
 \usage{
-MAP_pvalue(x, reference.value=0, MAP.ID=NULL)
+WBIC(x)
 }
 \arguments{
-   \item{x}{A vector of the posterior samples of a specific parameter.}
-   \item{reference.value}{The reference value to be tested. Defaults to 0.}
-   \item{MAP.ID}{The position of the MAP estimate in x. If not provided, the EAP is used instead.}
+   \item{x}{This required argument accepts a 𝑆×𝑁 matrix of pointwise log-likelihood (LL) for N records and S samples.}
 }
 \value{
-The ratio of the posterior density of a reference value to the posterior density of the MAP estimate.
+The Widely Applicable Bayesian Information Criterion.
 }
 \references{
-Makowski, D., Ben-Shachar, M. S., Chen, S. A., & Lüdecke, D. (2019). Indices of effect existence and significance in the Bayesian framework. Frontiers in Psychology, 10, 2767. https://doi.org/10.3389/fpsyg.2019.02767
+Watanabe, S. (2013). A widely applicable Bayesian information criterion. The Journal of Machine Learning Research, 14(1), 867-897. https://dl.acm.org/doi/abs/10.5555/2567709.2502609
 }
 \examples{##### Multiple Linear Regression with 5 Predictors
 ### Packages and functions====
@@ -56,11 +54,12 @@ Model <- function(parm, Data){
   
   ### Log-Likelihood
   mu <- cbind(1,Data$X) \%*\% beta
-  LL <- sum(dnorm(Data$y, mu, sigma, log=TRUE))
+  pwLL <- dnorm(Data$y, mu, sigma, log=TRUE)
+  LL <- sum(pwLL)
   
   ### Log-Posterior
   LP <- LL + Lp
-  Modelout <- list(LP=LP, Dev=-2*LL, Monitor=LP, yhat=rnorm(Data$n, mu, sigma), parm=c(beta, sigma))
+  Modelout <- list(LP=LP, Dev=-2*LL, Monitor=pwLL, yhat=rnorm(Data$n, mu, sigma), parm=parm)
   return(Modelout)
 }
 Model <- compiler::cmpfun(Model)
@@ -68,5 +67,5 @@ Model <- compiler::cmpfun(Model)
 ### FIT====
 fit <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
             burnin=100, status=110, thinning=1, algo="mwg")
-MAP_pvalue(fit$posterior[,1], reference.value=0)
+WBIC(fit$Monitor)
 }

@@ -87,18 +87,22 @@ Model <- function(parm, Data){
   
   ### Log-Posterior
   LP <- LL + Lp
-  Modelout <- list(LP=LP, Dev=-2*LL, Monitor=LP, yhat=rnorm(Data$n, mu, sigma), parm=parm)
+  Modelout <- list(LP=LP, Dev=-2*LL, Monitor=LP, yhat=rnorm(Data$n, mu, sigma), parm=c(beta, sigma))
   return(Modelout)
 }
 Model <- compiler::cmpfun(Model)
 
 ### FIT====
+# Metropolis-within-Gibbs
 fit1 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
              burnin=100, status=110, thinning=1, algo="mwg")
+# Random-Walk Metropolis
 fit2 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
              burnin=100, status=110, thinning=1, algo="rwm")
+# Barker Proposal Metropolis
 fit3 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
              burnin=100, status=110, thinning=1, algo="barker")
+# Oblique Hyperrectangle Slice Sampler
 fit4 <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
              burnin=100, status=110, thinning=1, algo="ohss")
 plot.ts(fit1$posterior)

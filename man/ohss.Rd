@@ -5,8 +5,8 @@
 Internal function. Samples new values from the logposterior of the user provided model using the Oblique Hyperrectangle Slice Sampler MCMC algorithm.
 }
 \usage{
-ohss(Model, Data, Iterations, Status, Thinning, ACC, DevianceMat,
-     LIV, Monitor, Mo0, samples, PPD, Adapt)
+ohss(Model, Data, Iterations, Status, InitialValues, Thinning, ACC,
+     DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt)
 }
 \arguments{
    \item{Model}{The user provided model.}

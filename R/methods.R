@@ -1,4 +1,5 @@
-#### Summary Method
+#### Summary Methods
+### MCMC
 summary.YABS_MCMC <- function(object, ...) {
   ### Header
   cat("YABS output generated with ", object$mcmc.info$algorithm," algorithm.\n",sep="")
@@ -59,8 +60,54 @@ summary.YABS_MCMC <- function(object, ...) {
   }
   invisible(stats)
 }
+### LA
+summary.YABS_LA <- function(object, ...) {
+  ### Header
+  cat("YABS output generated with ", object$la.info$algorithm," algorithm.\n",sep="")
+  cat("Estimates based on ", object$la.info$n.iter," iterations from the joint posterior.\n",sep="")
+  cat("LA ran for ",sprintf("%.3f",object$la.info$elapsed.mins[1])," minutes.\n\n",sep="")
+  
+  ### Summary table
+  EAP    <- sprintf("%.3f",colMeans(object$posterior))
+  DP     <- sprintf("%.3f",apply(object$posterior,2,sd))
+  HDI    <- t(apply(object$posterior,2,quantile,c(.025,.975)))
+  f      <- colMeans(sweep(sign(object$posterior),2,sign(apply(object$posterior,2,median)),"=="))
+  ESS    <- object$ESS
+  params <- colnames(object$posterior)
+  stats <- rbind( c("", c("EAP","sd","2.5%","97.5%","overlap0","f","ESS")),
+                  cbind(params, EAP, DP, t(matrix(sprintf("%.3f",t(HDI)),nrow=2)),
+                        rowSums(sign(HDI)) == 0, sprintf("%.3f",f),
+                        sprintf("%.2f",ESS)) )
+  align <- apply(nchar(stats), 2, max) + 2
+  total <- 101
+  for(i in 1:min(total,nrow(stats))) {
+    cat(sprintf(paste("%-",align[1],"s",sep=""), stats[i,1]),
+        sprintf(paste("%",align[2],"s",sep=""), stats[i,2]),
+        sprintf(paste("%",align[3],"s",sep=""), stats[i,3]),
+        sprintf(paste("%",align[4],"s",sep=""), stats[i,4]),
+        sprintf(paste("%",align[5],"s",sep=""), stats[i,5]),
+        sprintf(paste("%",align[6],"s",sep=""), stats[i,6]),
+        sprintf(paste("%",align[7],"s",sep=""), stats[i,7]),
+        sprintf(paste("%",align[8],"s",sep=""), stats[i,8]),"\n",sep="")
+  }
+  if(nrow(stats) > total) {
+    cat(' [ reached getOption("max.print") -- omitted ',nrow(stats) - total - 1,' rows ]\n')
+  }
+  cat("\n")
+  cat("ESS is the sample size of each posterior adjusted for autocorrelation.\n")
+  cat("\n")
+  cat("overlap0 checks if 0 falls in the parameter's 95% credible interval.\n")
+  cat("f is the proportion of the posterior with the same sign as the mean;\n")
+  cat("i.e., our confidence that the parameter is positive or negative.\n")
+  cat("\n")
+  cat("DIC info: (pD = var(deviance)/2).\n")
+  cat("pD = ",sprintf("%.2f",object$DIC$pD)," and DIC = ",sprintf("%.2f",object$DIC$DIC),"\n",sep="")
+  cat("DIC is an estimate of expected predictive error (lower is better).\n")
+  invisible(stats)
+}
 
-#### Print Method
+#### Print Methods
+### MCMC
 print.YABS_MCMC <- function(x, ...) {
   ### Header
   cat("YABS output generated with ", x$mcmc.info$algorithm," algorithm.\n",sep="")
@@ -98,6 +145,41 @@ print.YABS_MCMC <- function(x, ...) {
   if(sum(PSRF >= 1.1) == 0) {
     cat("Successful convergence based on PSRF (or Rhat) values (all < 1.1).\n")
   } else { cat("**WARNING** PSRF (or Rhat) values indicate convergence failure.\n") }
+  cat("\n")
+  invisible(x)
+}
+### LA
+print.YABS_LA <- function(x, ...) {
+  ### Header
+  cat("YABS output generated with ", x$la.info$algorithm," algorithm.\n",sep="")
+  cat("LA ran for ",sprintf("%.3f",x$la.info$elapsed.mins[1])," minutes.\n\n",sep="")
+  
+  ### Summary table
+  EAP    <- sprintf("%.3f",colMeans(x$posterior))
+  DP     <- sprintf("%.3f",apply(x$posterior,2,sd))
+  HDI    <- t(apply(x$posterior,2,quantile,c(.025,.975)))
+  f      <- colMeans(sweep(sign(x$posterior),2,sign(apply(x$posterior,2,median)),"=="))
+  ESS    <- x$ESS
+  params <- colnames(x$posterior)
+  stats <- rbind( c("", c("EAP","sd","2.5%","97.5%","overlap0","f","ESS")),
+                  cbind(params, EAP, DP, t(matrix(sprintf("%.3f",t(HDI)),nrow=2)),
+                        rowSums(sign(HDI)) == 0, sprintf("%.3f",f),
+                        sprintf("%.2f",ESS)) )
+  align <- apply(nchar(stats), 2, max) + 2
+  total <- 101
+  for(i in 1:min(total,nrow(stats))) {
+    cat(sprintf(paste("%-",align[1],"s",sep=""), stats[i,1]),
+        sprintf(paste("%",align[2],"s",sep=""), stats[i,2]),
+        sprintf(paste("%",align[3],"s",sep=""), stats[i,3]),
+        sprintf(paste("%",align[4],"s",sep=""), stats[i,4]),
+        sprintf(paste("%",align[5],"s",sep=""), stats[i,5]),
+        sprintf(paste("%",align[6],"s",sep=""), stats[i,6]),
+        sprintf(paste("%",align[7],"s",sep=""), stats[i,7]),
+        sprintf(paste("%",align[8],"s",sep=""), stats[i,8]),"\n",sep="")
+  }
+  if(nrow(stats) > total) {
+    cat(' [ reached getOption("max.print") -- omitted ',nrow(stats) - total - 1,' rows ]\n')
+  }
   cat("\n")
   invisible(x)
 }

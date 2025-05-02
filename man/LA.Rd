@@ -5,25 +5,26 @@
 The `LA` function is a basic user interface for calling Laplace Approximation method. The user provides a Model, a Data list, and Initial values (optional if PGF is provided). The function compiles the information and sends it to the `optim` function of the base package `stats`. The results are consolidated and summarized to be output as an object of class YABS_LA.
 }
 \usage{
-LA(Model, Data, Initial.Values=NULL, lower = -Inf, upper = Inf,
-   control = list(), hessian = FALSE, par.cov=NULL, SIR=TRUE, 
-   method = c("Nelder-Mead", "BFGS", "CG", "L-BFGS-B", "SANN", "Brent"),
-   iterations=NULL, nearPD=TRUE, check.convergence=FALSE)
+LA(Model, Data, Initial.Values=NULL, par.cov=NULL, SIR=TRUE,
+   iterations=NULL, nearPD=TRUE, check.convergence=FALSE, 
+   method = c("Nelder-Mead", "BFGS", "CG", "L-BFGS", "L-BFGS-B",
+              "SANN", "Brent", "nlm", "nlminb"),
+   lower = -Inf, upper = Inf, control = list(), hessian = FALSE)
 }
 \arguments{
-   \item{Model}{The user provided model. It should be a function that always output a list containing the following named objects: (i) LP, the logposterior; (ii) Dev, the deviance; (iii) Monitor, a single value or a vector of values to be monitored; (iv) yhat, values simulated from the posterior; and (v) parm, the value or vector with the parameters.}
-   \item{Data}{A named list of the data objects required by the model. Should always include: (i) parm.names, the name of the parameters; (ii) pos.parameter, the positions of each group of parameters (see the Example); (iii) PGF, the Parameter-Generating Function (PGF) if initial values for the parameters are not provided; and (iv) mon.names, the names of values monitored (see the Example).}
-   \item{Initial.Values}{A vector of initial values equal in length to the number of parameters. If it is not provided, it will use the PGF provided in Data to generated valid initial values.}
-   \item{lower}{Lower bound on the parameters for the "L-BFGS-B" method, or bounds in which to search for method "Brent".}
-  \item{upper}{Upper bound on the parameters for the "L-BFGS-B" method, or bounds in which to search for method "Brent".}
-  \item{control}{a list of control parameters. See ‘Details’ of the `optim` function.}
-  \item{hessian}{Logical. Should a numerically differentiated Hessian matrix be use to estimate the variance of the parameters?}
+  \item{Model}{The user provided model. It should be a function that always output a list containing the following named objects: (i) LP, the logposterior; (ii) Dev, the deviance; (iii) Monitor, a single value or a vector of values to be monitored; (iv) yhat, values simulated from the posterior; and (v) parm, the value or vector with the parameters.}
+  \item{Data}{A named list of the data objects required by the model. Should always include: (i) parm.names, the name of the parameters; (ii) pos.parameter, the positions of each group of parameters (see the Example); (iii) PGF, the Parameter-Generating Function (PGF) if initial values for the parameters are not provided; and (iv) mon.names, the names of values monitored (see the Example).}
+  \item{Initial.Values}{A vector of initial values equal in length to the number of parameters. If it is not provided, it will use the PGF provided in Data to generated valid initial values.}
   \item{par.cov}{An optional covariance matrix of the parameters (i.e., the diagonal represents the variance of the parameters to be estimated).}
   \item{SIR}{This logical argument indicates whether or not Sampling-Importance Resampling (SIR) is conducted to draw independent posterior samples. This argument defaults to TRUE.}
-  \item{method}{The method to be used. See ‘Details’ of the `optim` function. Can be abbreviated.}
-  \item{iterations}{The number of samples to be drawn if SIR is TRUE.}
+  \item{iterations}{The number of samples to be drawn with both SIR = TRUE or SIR = FALSE.}
   \item{nearPD}{This logical argument indicates whether or not the covariance matrix of the parameters should be transformed for the nearest positive-definite matrix. If this argument is set to FALSE and the estimated Hessian is not positive-definite, the function will throw an error.}
   \item{check.convergence}{This logical argument indicates whether the function should check if convergence was achieved before doing SIR. This argument defaults to FALSE. If it is set to TRUE and the optimization routine does not achieve convergence, the user will have to indicate if they desire to continue with SIR anyway, if that argument is set to TRUE.}
+  \item{method}{The method to be used. See ‘Details’ of the `optim`, `nlm`, and `nlminb` functions.}
+  \item{lower}{Lower bound on the parameters for the "L-BFGS-B" method, or bounds in which to search for method "Brent".}
+  \item{upper}{Upper bound on the parameters for the "L-BFGS-B" method, or bounds in which to search for method "Brent".}
+  \item{control}{a list of control parameters. See ‘Details’ of the `optim` function.}
+  \item{hessian}{Logical. Should a numerically differentiated Hessian matrix be used to estimate the variance of the parameters?}
 }
 \value{
 A list of class YABS_LA containing:
@@ -34,11 +35,9 @@ A list of class YABS_LA containing:
 5. Dev, the deviance of the MAP estimates;
 6. AIC, the Akaike Information criterion for the MAP estimates;
 7. convergence, a logical indicator if the optimization routine converged.
-
-If SIR is set to TRUE, it also contains:
-1. posterior, the posterior distribution of the parameters;
-2. DIC, the calculated DIC and its components (Dbar and pD);
-3. ESS, Effective Sample Size estimates for each parameter.
+8. posterior, the posterior distribution of the parameters;
+9. DIC, the calculated DIC and its components (Dbar and pD);
+10. ESS, Effective Sample Size estimates for each parameter.
 And yhat, LP, Monitor, Dev, and AIC are matrices/vectors of the posterior samples.
 }
 \references{
@@ -93,8 +92,7 @@ Model <- function(parm, Data){
 Model <- compiler::cmpfun(Model)
 
 ### FIT====
-fit <- LA(Model, Data, Initial.Values=NULL, iterations=1000,
-          hessian=TRUE, method="BFGS")
+fit <- LA(Model, Data)
 plot.ts(fit$posterior)
 fit
 }
