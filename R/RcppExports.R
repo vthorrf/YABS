@@ -21,3 +21,11 @@ ohss <- function(Model, Data, Iterations, Status, InitialValues, Thinning, ACC, 
     .Call(`_YABS_ohss`, Model, Data, Iterations, Status, InitialValues, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt)
 }
 
+nuts <- function(Model, Data, Iterations, Status, InitialValues, Thinning, thinned, postpred, Dev, Mon, Mo0, h = 1e-6, max_depth = 10L, Adapt = 1000L, target = 0.65) {
+    .Call(`_YABS_nuts`, Model, Data, Iterations, Status, InitialValues, Thinning, thinned, postpred, Dev, Mon, Mo0, h, max_depth, Adapt, target)
+}
+
+samplingImportanceResampling <- function(MAP, VarCov, Model, Data, iterations) {
+    .Call(`_YABS_samplingImportanceResampling`, MAP, VarCov, Model, Data, iterations)
+}
+

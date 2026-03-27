@@ -2,7 +2,6 @@
 // Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 #include <RcppArmadillo.h>
-#include <RcppEigen.h>
 #include <Rcpp.h>
 
 using namespace Rcpp;
@@ -13,14 +12,14 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // gradN
-Rcpp::NumericVector gradN(Function Model, List Data, NumericVector par, double h, int order);
+arma::vec gradN(Function Model, List Data, arma::vec par, double h, int order);
 RcppExport SEXP _YABS_gradN(SEXP ModelSEXP, SEXP DataSEXP, SEXP parSEXP, SEXP hSEXP, SEXP orderSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Function >::type Model(ModelSEXP);
     Rcpp::traits::input_parameter< List >::type Data(DataSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type par(parSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type par(parSEXP);
     Rcpp::traits::input_parameter< double >::type h(hSEXP);
     Rcpp::traits::input_parameter< int >::type order(orderSEXP);
     rcpp_result_gen = Rcpp::wrap(gradN(Model, Data, par, h, order));
@@ -28,7 +27,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // harmwg
-SEXP harmwg(Function Model, List Data, int Iterations, int Status, NumericVector InitialValues, int Thinning, double ACC, NumericMatrix DevianceMat, int LIV, NumericMatrix Monitor, List Mo0, NumericMatrix samples, NumericMatrix PPD, int Adapt, NumericMatrix Sigma);
+List harmwg(Function Model, List Data, int Iterations, int Status, arma::vec InitialValues, int Thinning, double ACC, arma::mat DevianceMat, int LIV, arma::mat Monitor, List Mo0, arma::mat samples, arma::mat PPD, int Adapt, arma::mat Sigma);
 RcppExport SEXP _YABS_harmwg(SEXP ModelSEXP, SEXP DataSEXP, SEXP IterationsSEXP, SEXP StatusSEXP, SEXP InitialValuesSEXP, SEXP ThinningSEXP, SEXP ACCSEXP, SEXP DevianceMatSEXP, SEXP LIVSEXP, SEXP MonitorSEXP, SEXP Mo0SEXP, SEXP samplesSEXP, SEXP PPDSEXP, SEXP AdaptSEXP, SEXP SigmaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -37,23 +36,23 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< List >::type Data(DataSEXP);
     Rcpp::traits::input_parameter< int >::type Iterations(IterationsSEXP);
     Rcpp::traits::input_parameter< int >::type Status(StatusSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type InitialValues(InitialValuesSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type InitialValues(InitialValuesSEXP);
     Rcpp::traits::input_parameter< int >::type Thinning(ThinningSEXP);
     Rcpp::traits::input_parameter< double >::type ACC(ACCSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type DevianceMat(DevianceMatSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type DevianceMat(DevianceMatSEXP);
     Rcpp::traits::input_parameter< int >::type LIV(LIVSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Monitor(MonitorSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Monitor(MonitorSEXP);
     Rcpp::traits::input_parameter< List >::type Mo0(Mo0SEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type samples(samplesSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type PPD(PPDSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type samples(samplesSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type PPD(PPDSEXP);
     Rcpp::traits::input_parameter< int >::type Adapt(AdaptSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Sigma(SigmaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Sigma(SigmaSEXP);
     rcpp_result_gen = Rcpp::wrap(harmwg(Model, Data, Iterations, Status, InitialValues, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma));
     return rcpp_result_gen;
 END_RCPP
 }
 // harm
-SEXP harm(Function Model, List Data, int Iterations, int Status, NumericVector InitialValues, int Thinning, double ACC, NumericMatrix DevianceMat, int LIV, NumericMatrix Monitor, List Mo0, NumericMatrix samples, NumericMatrix PPD, int Adapt, NumericMatrix Sigma);
+List harm(Function Model, List Data, int Iterations, int Status, arma::vec InitialValues, int Thinning, double ACC, arma::mat DevianceMat, int LIV, arma::mat Monitor, List Mo0, arma::mat samples, arma::mat PPD, int Adapt, arma::mat Sigma);
 RcppExport SEXP _YABS_harm(SEXP ModelSEXP, SEXP DataSEXP, SEXP IterationsSEXP, SEXP StatusSEXP, SEXP InitialValuesSEXP, SEXP ThinningSEXP, SEXP ACCSEXP, SEXP DevianceMatSEXP, SEXP LIVSEXP, SEXP MonitorSEXP, SEXP Mo0SEXP, SEXP samplesSEXP, SEXP PPDSEXP, SEXP AdaptSEXP, SEXP SigmaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -62,23 +61,23 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< List >::type Data(DataSEXP);
     Rcpp::traits::input_parameter< int >::type Iterations(IterationsSEXP);
     Rcpp::traits::input_parameter< int >::type Status(StatusSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type InitialValues(InitialValuesSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type InitialValues(InitialValuesSEXP);
     Rcpp::traits::input_parameter< int >::type Thinning(ThinningSEXP);
     Rcpp::traits::input_parameter< double >::type ACC(ACCSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type DevianceMat(DevianceMatSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type DevianceMat(DevianceMatSEXP);
     Rcpp::traits::input_parameter< int >::type LIV(LIVSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Monitor(MonitorSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Monitor(MonitorSEXP);
     Rcpp::traits::input_parameter< List >::type Mo0(Mo0SEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type samples(samplesSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type PPD(PPDSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type samples(samplesSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type PPD(PPDSEXP);
     Rcpp::traits::input_parameter< int >::type Adapt(AdaptSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Sigma(SigmaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Sigma(SigmaSEXP);
     rcpp_result_gen = Rcpp::wrap(harm(Model, Data, Iterations, Status, InitialValues, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma));
     return rcpp_result_gen;
 END_RCPP
 }
 // gcharm
-SEXP gcharm(Function Model, List Data, int Iterations, int Status, NumericVector InitialValues, int Thinning, double ACC, NumericMatrix DevianceMat, double h, int LIV, NumericMatrix Monitor, List Mo0, NumericMatrix samples, NumericMatrix PPD, int Adapt, NumericMatrix Sigma);
+List gcharm(Function Model, List Data, int Iterations, int Status, arma::vec InitialValues, int Thinning, double ACC, arma::mat DevianceMat, double h, int LIV, arma::mat Monitor, List Mo0, arma::mat samples, arma::mat PPD, int Adapt, arma::mat Sigma);
 RcppExport SEXP _YABS_gcharm(SEXP ModelSEXP, SEXP DataSEXP, SEXP IterationsSEXP, SEXP StatusSEXP, SEXP InitialValuesSEXP, SEXP ThinningSEXP, SEXP ACCSEXP, SEXP DevianceMatSEXP, SEXP hSEXP, SEXP LIVSEXP, SEXP MonitorSEXP, SEXP Mo0SEXP, SEXP samplesSEXP, SEXP PPDSEXP, SEXP AdaptSEXP, SEXP SigmaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -87,24 +86,24 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< List >::type Data(DataSEXP);
     Rcpp::traits::input_parameter< int >::type Iterations(IterationsSEXP);
     Rcpp::traits::input_parameter< int >::type Status(StatusSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type InitialValues(InitialValuesSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type InitialValues(InitialValuesSEXP);
     Rcpp::traits::input_parameter< int >::type Thinning(ThinningSEXP);
     Rcpp::traits::input_parameter< double >::type ACC(ACCSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type DevianceMat(DevianceMatSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type DevianceMat(DevianceMatSEXP);
     Rcpp::traits::input_parameter< double >::type h(hSEXP);
     Rcpp::traits::input_parameter< int >::type LIV(LIVSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Monitor(MonitorSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Monitor(MonitorSEXP);
     Rcpp::traits::input_parameter< List >::type Mo0(Mo0SEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type samples(samplesSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type PPD(PPDSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type samples(samplesSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type PPD(PPDSEXP);
     Rcpp::traits::input_parameter< int >::type Adapt(AdaptSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Sigma(SigmaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Sigma(SigmaSEXP);
     rcpp_result_gen = Rcpp::wrap(gcharm(Model, Data, Iterations, Status, InitialValues, Thinning, ACC, DevianceMat, h, LIV, Monitor, Mo0, samples, PPD, Adapt, Sigma));
     return rcpp_result_gen;
 END_RCPP
 }
 // ohss
-SEXP ohss(Function Model, List Data, int Iterations, int Status, NumericVector InitialValues, int Thinning, double ACC, NumericMatrix DevianceMat, int LIV, NumericMatrix Monitor, List Mo0, NumericMatrix samples, NumericMatrix PPD, int Adapt);
+List ohss(Function Model, List Data, int Iterations, int Status, arma::vec InitialValues, int Thinning, double ACC, arma::mat DevianceMat, int LIV, arma::mat Monitor, List Mo0, arma::mat samples, arma::mat PPD, int Adapt);
 RcppExport SEXP _YABS_ohss(SEXP ModelSEXP, SEXP DataSEXP, SEXP IterationsSEXP, SEXP StatusSEXP, SEXP InitialValuesSEXP, SEXP ThinningSEXP, SEXP ACCSEXP, SEXP DevianceMatSEXP, SEXP LIVSEXP, SEXP MonitorSEXP, SEXP Mo0SEXP, SEXP samplesSEXP, SEXP PPDSEXP, SEXP AdaptSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -113,17 +112,57 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< List >::type Data(DataSEXP);
     Rcpp::traits::input_parameter< int >::type Iterations(IterationsSEXP);
     Rcpp::traits::input_parameter< int >::type Status(StatusSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type InitialValues(InitialValuesSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type InitialValues(InitialValuesSEXP);
     Rcpp::traits::input_parameter< int >::type Thinning(ThinningSEXP);
     Rcpp::traits::input_parameter< double >::type ACC(ACCSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type DevianceMat(DevianceMatSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type DevianceMat(DevianceMatSEXP);
     Rcpp::traits::input_parameter< int >::type LIV(LIVSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type Monitor(MonitorSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Monitor(MonitorSEXP);
     Rcpp::traits::input_parameter< List >::type Mo0(Mo0SEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type samples(samplesSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type PPD(PPDSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type samples(samplesSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type PPD(PPDSEXP);
     Rcpp::traits::input_parameter< int >::type Adapt(AdaptSEXP);
     rcpp_result_gen = Rcpp::wrap(ohss(Model, Data, Iterations, Status, InitialValues, Thinning, ACC, DevianceMat, LIV, Monitor, Mo0, samples, PPD, Adapt));
+    return rcpp_result_gen;
+END_RCPP
+}
+// nuts
+List nuts(Function Model, List Data, int Iterations, int Status, arma::vec InitialValues, int Thinning, arma::mat thinned, arma::mat postpred, arma::mat Dev, arma::mat Mon, List Mo0, double h, int max_depth, int Adapt, double target);
+RcppExport SEXP _YABS_nuts(SEXP ModelSEXP, SEXP DataSEXP, SEXP IterationsSEXP, SEXP StatusSEXP, SEXP InitialValuesSEXP, SEXP ThinningSEXP, SEXP thinnedSEXP, SEXP postpredSEXP, SEXP DevSEXP, SEXP MonSEXP, SEXP Mo0SEXP, SEXP hSEXP, SEXP max_depthSEXP, SEXP AdaptSEXP, SEXP targetSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Function >::type Model(ModelSEXP);
+    Rcpp::traits::input_parameter< List >::type Data(DataSEXP);
+    Rcpp::traits::input_parameter< int >::type Iterations(IterationsSEXP);
+    Rcpp::traits::input_parameter< int >::type Status(StatusSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type InitialValues(InitialValuesSEXP);
+    Rcpp::traits::input_parameter< int >::type Thinning(ThinningSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type thinned(thinnedSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type postpred(postpredSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Dev(DevSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Mon(MonSEXP);
+    Rcpp::traits::input_parameter< List >::type Mo0(Mo0SEXP);
+    Rcpp::traits::input_parameter< double >::type h(hSEXP);
+    Rcpp::traits::input_parameter< int >::type max_depth(max_depthSEXP);
+    Rcpp::traits::input_parameter< int >::type Adapt(AdaptSEXP);
+    Rcpp::traits::input_parameter< double >::type target(targetSEXP);
+    rcpp_result_gen = Rcpp::wrap(nuts(Model, Data, Iterations, Status, InitialValues, Thinning, thinned, postpred, Dev, Mon, Mo0, h, max_depth, Adapt, target));
+    return rcpp_result_gen;
+END_RCPP
+}
+// samplingImportanceResampling
+List samplingImportanceResampling(arma::vec MAP, arma::mat VarCov, Function Model, List Data, int iterations);
+RcppExport SEXP _YABS_samplingImportanceResampling(SEXP MAPSEXP, SEXP VarCovSEXP, SEXP ModelSEXP, SEXP DataSEXP, SEXP iterationsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::vec >::type MAP(MAPSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type VarCov(VarCovSEXP);
+    Rcpp::traits::input_parameter< Function >::type Model(ModelSEXP);
+    Rcpp::traits::input_parameter< List >::type Data(DataSEXP);
+    Rcpp::traits::input_parameter< int >::type iterations(iterationsSEXP);
+    rcpp_result_gen = Rcpp::wrap(samplingImportanceResampling(MAP, VarCov, Model, Data, iterations));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -134,6 +173,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_YABS_harm", (DL_FUNC) &_YABS_harm, 15},
     {"_YABS_gcharm", (DL_FUNC) &_YABS_gcharm, 16},
     {"_YABS_ohss", (DL_FUNC) &_YABS_ohss, 14},
+    {"_YABS_nuts", (DL_FUNC) &_YABS_nuts, 15},
+    {"_YABS_samplingImportanceResampling", (DL_FUNC) &_YABS_samplingImportanceResampling, 5},
     {NULL, NULL, 0}
 };
 

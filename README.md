@@ -9,6 +9,7 @@ This package should be considered experimental at this point of development. The
 * Metropolis-within Gibbs (`algo = "mwg"` argument)
 * Barker Proposal Metropolis (`algo = "barker"` argument)
 * Oblique Hyperrectangle Slice Sampler (`algo = "ohss"` argument)
+* No-U-Turn Sampler (`algo = "nuts"` argument)
 
 We also implemented a Laplace Approximation method, with Sampling-Importance Resampling.
 

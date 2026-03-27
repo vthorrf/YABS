@@ -5,7 +5,7 @@
 The `LA` function is a basic user interface for calling Laplace Approximation method. The user provides a Model, a Data list, and Initial values (optional if PGF is provided). The function compiles the information and sends it to the `optim` function of the base package `stats`. The results are consolidated and summarized to be output as an object of class YABS_LA.
 }
 \usage{
-LA(Model, Data, Initial.Values=NULL, par.cov=NULL, SIR=TRUE,
+LA(Model, Data, Initial.Values=NULL, par.cov=NULL, SIR=FALSE,
    iterations=NULL, nearPD=TRUE, check.convergence=FALSE, 
    method = c("Nelder-Mead", "BFGS", "CG", "L-BFGS", "L-BFGS-B",
               "SANN", "Brent", "nlm", "nlminb"),
@@ -16,7 +16,7 @@ LA(Model, Data, Initial.Values=NULL, par.cov=NULL, SIR=TRUE,
   \item{Data}{A named list of the data objects required by the model. Should always include: (i) parm.names, the name of the parameters; (ii) pos.parameter, the positions of each group of parameters (see the Example); (iii) PGF, the Parameter-Generating Function (PGF) if initial values for the parameters are not provided; and (iv) mon.names, the names of values monitored (see the Example).}
   \item{Initial.Values}{A vector of initial values equal in length to the number of parameters. If it is not provided, it will use the PGF provided in Data to generated valid initial values.}
   \item{par.cov}{An optional covariance matrix of the parameters (i.e., the diagonal represents the variance of the parameters to be estimated).}
-  \item{SIR}{This logical argument indicates whether or not Sampling-Importance Resampling (SIR) is conducted to draw independent posterior samples. This argument defaults to TRUE.}
+  \item{SIR}{This logical argument indicates whether or not Sampling-Importance Resampling (SIR) is conducted to draw independent posterior samples. This argument defaults to FALSE.}
   \item{iterations}{The number of samples to be drawn with both SIR = TRUE or SIR = FALSE.}
   \item{nearPD}{This logical argument indicates whether or not the covariance matrix of the parameters should be transformed for the nearest positive-definite matrix. If this argument is set to FALSE and the estimated Hessian is not positive-definite, the function will throw an error.}
   \item{check.convergence}{This logical argument indicates whether the function should check if convergence was achieved before doing SIR. This argument defaults to FALSE. If it is set to TRUE and the optimization routine does not achieve convergence, the user will have to indicate if they desire to continue with SIR anyway, if that argument is set to TRUE.}
@@ -82,17 +82,23 @@ Model <- function(parm, Data){
   
   ### Log-Likelihood
   mu <- cbind(1,Data$X) \%*\% beta
-  LL <- sum(dnorm(Data$y, mu, sigma, log=TRUE))
+  pw_ll <- dnorm(Data$y, mu, sigma, log=TRUE)
+  LL <- sum(pw_ll)
   
   ### Log-Posterior
   LP <- LL + Lp
-  Modelout <- list(LP=LP, Dev=-2*LL, Monitor=LP, yhat=rnorm(Data$n, mu, sigma), parm=parm)
+  Modelout <- list(LP=LP, Dev=-2*LL, Monitor=pw_ll, yhat=rnorm(Data$n, mu, sigma), parm=c(beta, sigma))
   return(Modelout)
 }
 Model <- compiler::cmpfun(Model)
 
 ### FIT====
-fit <- LA(Model, Data)
-plot.ts(fit$posterior)
-fit
+## Gaussian approximation
+fit1 <- LA(Model, Data)
+plot.ts(fit1$posterior)
+fit1
+## SIR approximation
+fit2 <- LA(Model, Data, SIR=TRUE)
+plot.ts(fit2$posterior)
+fit2
 }

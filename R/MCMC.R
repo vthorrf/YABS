@@ -1,7 +1,7 @@
 MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL, status=NULL,
                  thinning=NULL, adapt=NULL, nchains=1, parallel=FALSE, cores=NULL, update.progress=NULL,
                  pckgs=NULL, opt.init=TRUE, par.cov=NULL, hessian=FALSE, control=list(fnscale=-1),
-                 algo=c("mwg","rwm","barker","ohss")) {
+                 algo=c("mwg","rwm","barker","ohss","nuts")) {
   ################=============== Initial settings
   ## Default values for the arguments and some error handling
   if(length(algo) != 1)        algo            <- NULL
@@ -21,6 +21,8 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
   if(is.null(update.progress)) update.progress <- 2
   if(update.progress <= 0)     update.progress <- 2
   if(!is.matrix(par.cov) & !is.null(par.cov)) stop("'par.cov' should be a matrix. Please check the documentation.")
+  if(algo == "nuts")           par.cov         <- diag(length(Initial.Values))
+  if(algo == "nuts")           hessian         <- FALSE
   status <- round(status,0)
   h <- 1e-6; ITER <- iterations + burnin + adapt
   if(is.null(thinning))        thinning        <- 1
@@ -48,13 +50,16 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
     if(!is.null(par.cov)) {
       epsilon <- par.cov
     } else if (!hessian) {
-      epsilon <- tryCatch( solve(-diag(gradN(Model, Data, MAP$par, order=2)*1e6)),
-       error=function(e) ginv(-diag(gradN(Model, Data, MAP$par, order=2)*1e6)) )
+      epsilon <- tryCatch( solve(-diag(c(gradN(Model, Data, MAP$par, order=2)))),
+       error=function(e) ginv(-diag(c(gradN(Model, Data, MAP$par, order=2)))) )
     } else epsilon <- tryCatch( solve(-MAP$hessian), error=function(e) ginv(-MAP$hessian) )
     if(min(eigen(epsilon)$values) < 0) {
       epsilon <- tryCatch( nearPD(epsilon, base.matrix=T)$mat, 
                            error=function(e) epsilon )
     }
+    p <- length(MAP$par)
+    epsilon <- (epsilon + t(epsilon)) / 2
+    epsilon <- epsilon + diag(1e-8, p)
     Initial.Values <- mvrnorm(ncol(epsilon)+4+nchains, MAP$par, Sigma=epsilon, empirical=TRUE)
     if(MAP$convergence == 0) {
       adapt <- 0
@@ -70,7 +75,6 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
     }
     Initial.Values <- mvrnorm(ncol(epsilon)+4+nchains, Initial.Values, Sigma=epsilon, empirical=TRUE)
   }
-  lt_epsilon <- t(chol(epsilon + diag(1e-4, nrow=ncol(epsilon), ncol=ncol(epsilon))))
   
   ## Prepare the parameters for the MCMC algorithms
   liv        <- length(Initial.Values[1,])
@@ -102,16 +106,16 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
       pboptions(nout=update.progress)
       fits <- pblapply(X=1:nchains, function(i) {
         temp0 <- Model(Initial.Values[i,], Data)
-        harmwg(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
-               DEV, liv, MON, temp0, thinned, postpred, adapt, lt_epsilon)
+        harmwg(Model, Data, ITER+1, status, Initial.Values[i,], thinning, acceptance,
+               DEV, liv, MON, temp0, thinned, postpred, adapt, epsilon)
       }, cl = cl)
       stopCluster(cl)
     } else {
       fits <- lapply(1:nchains, function(i) {
         cat("=========Chain number ", i,"=========\n", sep="")
         temp0 <- Model(Initial.Values[i,], Data)
-        harmwg(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
-               DEV, liv, MON, temp0, thinned, postpred, adapt, lt_epsilon)
+        harmwg(Model, Data, ITER+1, status, Initial.Values[i,], thinning, acceptance,
+               DEV, liv, MON, temp0, thinned, postpred, adapt, epsilon)
       })
     }
     stopTime = proc.time()
@@ -134,16 +138,16 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
       pboptions(nout=update.progress)
       fits <- pblapply(X=1:nchains, function(i) {
         temp0 <- Model(Initial.Values[i,], Data)
-        harm(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
-             DEV, liv, MON, temp0, thinned, postpred, adapt, lt_epsilon)
+        harm(Model, Data, ITER+1, status, Initial.Values[i,], thinning, acceptance,
+             DEV, liv, MON, temp0, thinned, postpred, adapt, epsilon)
       }, cl = cl)
       stopCluster(cl)
     } else {
       fits <- lapply(1:nchains, function(i) {
         cat("=========Chain number ", i,"=========\n", sep="")
         temp0 <- Model(Initial.Values[i,], Data)
-        harm(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
-             DEV, liv, MON, temp0, thinned, postpred, adapt, lt_epsilon)
+        harm(Model, Data, ITER+1, status, Initial.Values[i,], thinning, acceptance,
+             DEV, liv, MON, temp0, thinned, postpred, adapt, epsilon)
       })
     }
     stopTime = proc.time()
@@ -166,16 +170,16 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
       pboptions(nout=update.progress)
       fits <- pblapply(X=1:nchains, function(i) {
         temp0 <- Model(Initial.Values[i,], Data)
-        gcharm(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
-               DEV, h, liv, MON, temp0, thinned, postpred, adapt, lt_epsilon)
+        gcharm(Model, Data, ITER+1, status, Initial.Values[i,], thinning, acceptance,
+               DEV, h, liv, MON, temp0, thinned, postpred, adapt, epsilon)
       }, cl = cl)
       stopCluster(cl)
     } else {
       fits <- lapply(1:nchains, function(i) {
         cat("=========Chain number ", i,"=========\n", sep="")
         temp0 <- Model(Initial.Values[i,], Data)
-        gcharm(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
-               DEV, h, liv, MON, temp0, thinned, postpred, adapt, lt_epsilon)
+        gcharm(Model, Data, ITER+1, status, Initial.Values[i,], thinning, acceptance,
+               DEV, h, liv, MON, temp0, thinned, postpred, adapt, epsilon)
       })
     }
     stopTime = proc.time()
@@ -198,7 +202,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
       pboptions(nout=update.progress)
       fits <- pblapply(X=1:nchains, function(i) {
         temp0 <- Model(Initial.Values[i,], Data)
-        ohss(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
+        ohss(Model, Data, ITER+1, status, Initial.Values[i,], thinning, acceptance,
              DEV, liv, MON, temp0, thinned, postpred, adapt)
       }, cl = cl)
       stopCluster(cl)
@@ -206,7 +210,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
       fits <- lapply(1:nchains, function(i) {
         cat("=========Chain number ", i,"=========\n", sep="")
         temp0 <- Model(Initial.Values[i,], Data)
-        ohss(Model, Data, ITER, status, Initial.Values[i,], thinning, acceptance,
+        ohss(Model, Data, ITER+1, status, Initial.Values[i,], thinning, acceptance,
              DEV, liv, MON, temp0, thinned, postpred, adapt)
       })
     }
@@ -214,7 +218,41 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
     elapsedTime = stopTime - startTime
     cat("\n")
     cat("It took ",round(elapsedTime[3],2)," secs for the run to finish.\n", sep="")
-  } else  stop("Unkown MCMC algorithm. Please, check documentation.")
+  } else if(algo == "nuts") {
+    ##############=============== No-U-Turn Sampler
+    method = "NUTS"
+    cat("Algorithm: No-U-Turn Sampler\n\n")
+    startTime = proc.time()
+    if(parallel) {
+      cat("Running ", nchains," chains in parallel\n", sep="")
+      cl <- makeCluster(cores)
+      if(!is.null(pckgs)) {
+        par.setup <- parLapply(cl, 1:length(cl), function(xx) {
+          lapply(pckgs, require, character.only = TRUE)
+        })
+      }
+      pboptions(nout=update.progress)
+      fits <- pblapply(X=1:nchains, function(i) {
+        temp0 <- Model(Initial.Values[i,], Data)
+        nuts(Model, Data, ITER+1, status, Initial.Values[i,], thinning,
+             thinned, postpred, DEV, MON, temp0, Adapt = adapt)
+      }, cl = cl)
+      stopCluster(cl)
+    } else {
+      fits <- lapply(1:nchains, function(i) {
+        cat("=========Chain number ", i,"=========\n", sep="")
+        temp0 <- Model(Initial.Values[i,], Data)
+        nuts(Model, Data, ITER+1, status, Initial.Values[i,], thinning,
+             thinned, postpred, DEV, MON, temp0, Adapt = adapt)
+      })
+    }
+    stopTime = proc.time()
+    elapsedTime = stopTime - startTime
+    cat("\n")
+    cat("It took ",round(elapsedTime[3],2)," secs for the run to finish.\n", sep="")
+  } else {
+    stop("Unkown MCMC algorithm. Please, check documentation.")
+  }
   
   ################=============== Results
   ## Posterior list
@@ -225,8 +263,8 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
   post_list <- lapply(fits, function(g) {
     temp0 <- as.matrix(g$thinned[keepers,])
     dev <- unlist(g$Dev[keepers,])
-    temp1 <- cbind(temp0, dev, {{2 * liv} + dev})
-    nomes <- c(Data$parm.names, "deviance", "aic")
+    temp1 <- cbind(temp0, dev)
+    nomes <- c(Data$parm.names, "deviance")
     if(length(nomes) == ncol(temp1)) {
       colnames(temp1) <- nomes
     } else {
@@ -238,12 +276,10 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
   ## Posterior predictive
   ppred <- lapply(fits, function(g) {
     as.matrix(g$postpred[keepers,])
-    #as.matrix(g$postpred[{1:nrow(g$postpred)} %!in% seq_len(BURN),])
   })
   ## Additionally monitored variables/parameters
   Monitor <- lapply(fits, function(g) {
     as.matrix(g$Mon[keepers,])
-    #as.matrix(g$Mon[{1:nrow(g$Mon)} %!in% seq_len(BURN),])
   })
   ## LogPosterior
   logPost <- lapply(post_list, function(g) {
@@ -256,9 +292,9 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
   pD        <- var(posterior[,"deviance"])/2
   DIC       <- list(DIC=Dbar + pD, Dbar=Dbar, pD=pD)
   ## Acceptance rate
-  accRate   <- mean(sapply(fits, function(g) g$Acc))
+  accRate   <- mean(sapply(fits, function(g) g$Acceptance))
   ## Effective Sample Size
-  ESS       <- apply(posterior,2,effectiveSize)
+  ESS       <- apply(posterior[,Data$parm.names],2,effectiveSize)
   ## R_hat (Potential scale reduction factor)
   if( nchains == 1 ) {
     halves    <- suppressWarnings( apply(posterior, 2, split,
@@ -280,16 +316,17 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
                     n.burnin=burnin, n.thin=thinning, n.adapt=adapt,
                     n.chains=nchains, elapsed.mins=elapsedTime/60)
   ## Final list of results
-  Result    <- list(posterior=posterior,
+  Result    <- list(posterior=posterior[,Data$parm.names],
                     yhat=do.call("rbind",ppred),
                     LP=unlist(logPost),
                     Monitor=if(ncol(Monitor[[1]]) == 1) {
                       unlist(Monitor)
                     } else { do.call("rbind",Monitor) },
+                    Dev=posterior[,"deviance"],
                     DIC=DIC,
                     acc=accRate,
                     ESS=ESS,
-                    PSRF=GD$psrf[,1],
+                    PSRF=GD$psrf[,1][Data$parm.names],
                     MPSRF=GD$mpsrf,
                     mcmc.info=mcmc.info)
   class(Result) <- "YABS_MCMC"
