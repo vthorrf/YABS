@@ -1,15 +1,15 @@
 Package: YABS
 Type: Package
 Title: YABS: Yet Another Bayesian Sampler
-Version: 0.4.0
-Date: 2026-03-27
+Version: 0.4.1
+Date: 2026-07-21
 Authors@R: c(person("Vithor", "Franco", email = "vithorfranco@gmail.com", role = c("aut", "cre")))
 Description: Provides general purpose tools for helping users to implement Bayesian
              models using R functions. Currently, Metropolis-within-Gibbs, Random-walk
              Metropolis, Barker Proposal Metropolis, Oblique Hyperrectangle Slice Sampler, and
              No-U-Turn Sampler are the MCMC algorithms implemented. Other MCMC algorithms may be
              implemented in the future. We also included an implementation of Laplace Approximation
-             with Sampling-Importance Resampling.
+             with Sampling-Importance Resampling and four general-purpose Variational Bayes algorithms.
 License: file LICENSE
 Encoding: UTF-8
 BugReports: https://github.com/vthorrf/YABS/issues

@@ -29,3 +29,19 @@ samplingImportanceResampling <- function(MAP, VarCov, Model, Data, iterations) {
     .Call(`_YABS_samplingImportanceResampling`, MAP, VarCov, Model, Data, iterations)
 }
 
+sagva <- function(Model, Data, Iterations, Status, InitialValues, InitialCov, Thinning, thinned, postpred, Dev, Mon, h = 1e-4, learning_rate = -1.0, Stop_Tolerance = 1e-4, Min_Iterations = 200L, Patience = 50L, eig_floor = 1e-8) {
+    .Call(`_YABS_sagva`, Model, Data, Iterations, Status, InitialValues, InitialCov, Thinning, thinned, postpred, Dev, Mon, h, learning_rate, Stop_Tolerance, Min_Iterations, Patience, eig_floor)
+}
+
+qnsagva <- function(Model, Data, Iterations, Status, InitialValues, InitialCov, Thinning, thinned, postpred, Dev, Mon, memory = 10L, h = 1e-4, damping = 0.2, learning_rate = -1.0, Stop_Tolerance = 1e-4, Min_Iterations = 200L, Patience = 50L, eig_floor = 1e-8) {
+    .Call(`_YABS_qnsagva`, Model, Data, Iterations, Status, InitialValues, InitialCov, Thinning, thinned, postpred, Dev, Mon, memory, h, damping, learning_rate, Stop_Tolerance, Min_Iterations, Patience, eig_floor)
+}
+
+mcvi <- function(Model, Data, Iterations, Status, thinned, postpred, Dev, Mon, InitialValues, InitialCov, Thinning, T_mcmc = 3L, L_leapfrog = 3L, K_rb = 5L, h = 1e-4, learning_rate = 5e-3, spsa_scale = 1e-3, initial_epsilon = -1.0, Stop_Tolerance = 1e-4, Min_Iterations = 200L, Patience = 50L, grad_clip = 100.0) {
+    .Call(`_YABS_mcvi`, Model, Data, Iterations, Status, thinned, postpred, Dev, Mon, InitialValues, InitialCov, Thinning, T_mcmc, L_leapfrog, K_rb, h, learning_rate, spsa_scale, initial_epsilon, Stop_Tolerance, Min_Iterations, Patience, grad_clip)
+}
+
+svgd <- function(Model, Data, Iterations, Status, InitialParticles, Thinning, thinned, postpred, Dev, Mon, step_size = 0.01, h_scale = 1.0, use_adam = TRUE, h_grad = 1e-4, Stop_Tolerance = 1e-4, Min_Iterations = 200L, Patience = 50L, grad_clip = 100.0) {
+    .Call(`_YABS_svgd`, Model, Data, Iterations, Status, InitialParticles, Thinning, thinned, postpred, Dev, Mon, step_size, h_scale, use_adam, h_grad, Stop_Tolerance, Min_Iterations, Patience, grad_clip)
+}
+

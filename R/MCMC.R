@@ -294,7 +294,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
   ## Acceptance rate
   accRate   <- mean(sapply(fits, function(g) g$Acceptance))
   ## Effective Sample Size
-  ESS       <- apply(posterior[,Data$parm.names],2,effectiveSize)
+  ESS       <- apply(posterior[,seq_along(Data$parm.names)],2,effectiveSize)
   ## R_hat (Potential scale reduction factor)
   if( nchains == 1 ) {
     halves    <- suppressWarnings( apply(posterior, 2, split,
@@ -316,7 +316,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
                     n.burnin=burnin, n.thin=thinning, n.adapt=adapt,
                     n.chains=nchains, elapsed.mins=elapsedTime/60)
   ## Final list of results
-  Result    <- list(posterior=posterior[,Data$parm.names],
+  Result    <- list(posterior=posterior[,seq_along(Data$parm.names)],
                     yhat=do.call("rbind",ppred),
                     LP=unlist(logPost),
                     Monitor=if(ncol(Monitor[[1]]) == 1) {
@@ -326,7 +326,7 @@ MCMC <- function(Model, Data, Initial.Values=NULL, iterations=NULL, burnin=NULL,
                     DIC=DIC,
                     acc=accRate,
                     ESS=ESS,
-                    PSRF=GD$psrf[,1][Data$parm.names],
+                    PSRF=GD$psrf[,1][seq_along(Data$parm.names)],
                     MPSRF=GD$mpsrf,
                     mcmc.info=mcmc.info)
   class(Result) <- "YABS_MCMC"

@@ -2,7 +2,7 @@
 \alias{BF}
 \title{Bayes Factor}
 \description{
-The Bayes factor in this function corresponds to the ratio of the posterior density of a reference value to the prior density of the same reference value. Therefore, it indicates how much more likely is the probability of the reference value under the posterior in comparison to the prior distribution.
+The Bayes factor in this function corresponds to the ratio of the posterior density of a reference value to the prior density of the same reference value (i.e., the Savage–Dickey method). Therefore, it indicates how much more likely is the probability of the reference value under the posterior in comparison to the prior distribution.
 }
 \usage{
 BF(x, reference.value=0, prior.density, ...)

@@ -166,6 +166,122 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// sagva
+List sagva(Function Model, List Data, int Iterations, int Status, arma::vec InitialValues, arma::mat InitialCov, int Thinning, arma::mat thinned, arma::mat postpred, arma::mat Dev, arma::mat Mon, double h, double learning_rate, double Stop_Tolerance, int Min_Iterations, int Patience, double eig_floor);
+RcppExport SEXP _YABS_sagva(SEXP ModelSEXP, SEXP DataSEXP, SEXP IterationsSEXP, SEXP StatusSEXP, SEXP InitialValuesSEXP, SEXP InitialCovSEXP, SEXP ThinningSEXP, SEXP thinnedSEXP, SEXP postpredSEXP, SEXP DevSEXP, SEXP MonSEXP, SEXP hSEXP, SEXP learning_rateSEXP, SEXP Stop_ToleranceSEXP, SEXP Min_IterationsSEXP, SEXP PatienceSEXP, SEXP eig_floorSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Function >::type Model(ModelSEXP);
+    Rcpp::traits::input_parameter< List >::type Data(DataSEXP);
+    Rcpp::traits::input_parameter< int >::type Iterations(IterationsSEXP);
+    Rcpp::traits::input_parameter< int >::type Status(StatusSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type InitialValues(InitialValuesSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type InitialCov(InitialCovSEXP);
+    Rcpp::traits::input_parameter< int >::type Thinning(ThinningSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type thinned(thinnedSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type postpred(postpredSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Dev(DevSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Mon(MonSEXP);
+    Rcpp::traits::input_parameter< double >::type h(hSEXP);
+    Rcpp::traits::input_parameter< double >::type learning_rate(learning_rateSEXP);
+    Rcpp::traits::input_parameter< double >::type Stop_Tolerance(Stop_ToleranceSEXP);
+    Rcpp::traits::input_parameter< int >::type Min_Iterations(Min_IterationsSEXP);
+    Rcpp::traits::input_parameter< int >::type Patience(PatienceSEXP);
+    Rcpp::traits::input_parameter< double >::type eig_floor(eig_floorSEXP);
+    rcpp_result_gen = Rcpp::wrap(sagva(Model, Data, Iterations, Status, InitialValues, InitialCov, Thinning, thinned, postpred, Dev, Mon, h, learning_rate, Stop_Tolerance, Min_Iterations, Patience, eig_floor));
+    return rcpp_result_gen;
+END_RCPP
+}
+// qnsagva
+List qnsagva(Function Model, List Data, int Iterations, int Status, arma::vec InitialValues, arma::mat InitialCov, int Thinning, arma::mat thinned, arma::mat postpred, arma::mat Dev, arma::mat Mon, int memory, double h, double damping, double learning_rate, double Stop_Tolerance, int Min_Iterations, int Patience, double eig_floor);
+RcppExport SEXP _YABS_qnsagva(SEXP ModelSEXP, SEXP DataSEXP, SEXP IterationsSEXP, SEXP StatusSEXP, SEXP InitialValuesSEXP, SEXP InitialCovSEXP, SEXP ThinningSEXP, SEXP thinnedSEXP, SEXP postpredSEXP, SEXP DevSEXP, SEXP MonSEXP, SEXP memorySEXP, SEXP hSEXP, SEXP dampingSEXP, SEXP learning_rateSEXP, SEXP Stop_ToleranceSEXP, SEXP Min_IterationsSEXP, SEXP PatienceSEXP, SEXP eig_floorSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Function >::type Model(ModelSEXP);
+    Rcpp::traits::input_parameter< List >::type Data(DataSEXP);
+    Rcpp::traits::input_parameter< int >::type Iterations(IterationsSEXP);
+    Rcpp::traits::input_parameter< int >::type Status(StatusSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type InitialValues(InitialValuesSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type InitialCov(InitialCovSEXP);
+    Rcpp::traits::input_parameter< int >::type Thinning(ThinningSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type thinned(thinnedSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type postpred(postpredSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Dev(DevSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Mon(MonSEXP);
+    Rcpp::traits::input_parameter< int >::type memory(memorySEXP);
+    Rcpp::traits::input_parameter< double >::type h(hSEXP);
+    Rcpp::traits::input_parameter< double >::type damping(dampingSEXP);
+    Rcpp::traits::input_parameter< double >::type learning_rate(learning_rateSEXP);
+    Rcpp::traits::input_parameter< double >::type Stop_Tolerance(Stop_ToleranceSEXP);
+    Rcpp::traits::input_parameter< int >::type Min_Iterations(Min_IterationsSEXP);
+    Rcpp::traits::input_parameter< int >::type Patience(PatienceSEXP);
+    Rcpp::traits::input_parameter< double >::type eig_floor(eig_floorSEXP);
+    rcpp_result_gen = Rcpp::wrap(qnsagva(Model, Data, Iterations, Status, InitialValues, InitialCov, Thinning, thinned, postpred, Dev, Mon, memory, h, damping, learning_rate, Stop_Tolerance, Min_Iterations, Patience, eig_floor));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mcvi
+List mcvi(Function Model, List Data, int Iterations, int Status, arma::mat thinned, arma::mat postpred, arma::mat Dev, arma::mat Mon, arma::vec InitialValues, arma::mat InitialCov, int Thinning, int T_mcmc, int L_leapfrog, int K_rb, double h, double learning_rate, double spsa_scale, double initial_epsilon, double Stop_Tolerance, int Min_Iterations, int Patience, double grad_clip);
+RcppExport SEXP _YABS_mcvi(SEXP ModelSEXP, SEXP DataSEXP, SEXP IterationsSEXP, SEXP StatusSEXP, SEXP thinnedSEXP, SEXP postpredSEXP, SEXP DevSEXP, SEXP MonSEXP, SEXP InitialValuesSEXP, SEXP InitialCovSEXP, SEXP ThinningSEXP, SEXP T_mcmcSEXP, SEXP L_leapfrogSEXP, SEXP K_rbSEXP, SEXP hSEXP, SEXP learning_rateSEXP, SEXP spsa_scaleSEXP, SEXP initial_epsilonSEXP, SEXP Stop_ToleranceSEXP, SEXP Min_IterationsSEXP, SEXP PatienceSEXP, SEXP grad_clipSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Function >::type Model(ModelSEXP);
+    Rcpp::traits::input_parameter< List >::type Data(DataSEXP);
+    Rcpp::traits::input_parameter< int >::type Iterations(IterationsSEXP);
+    Rcpp::traits::input_parameter< int >::type Status(StatusSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type thinned(thinnedSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type postpred(postpredSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Dev(DevSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Mon(MonSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type InitialValues(InitialValuesSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type InitialCov(InitialCovSEXP);
+    Rcpp::traits::input_parameter< int >::type Thinning(ThinningSEXP);
+    Rcpp::traits::input_parameter< int >::type T_mcmc(T_mcmcSEXP);
+    Rcpp::traits::input_parameter< int >::type L_leapfrog(L_leapfrogSEXP);
+    Rcpp::traits::input_parameter< int >::type K_rb(K_rbSEXP);
+    Rcpp::traits::input_parameter< double >::type h(hSEXP);
+    Rcpp::traits::input_parameter< double >::type learning_rate(learning_rateSEXP);
+    Rcpp::traits::input_parameter< double >::type spsa_scale(spsa_scaleSEXP);
+    Rcpp::traits::input_parameter< double >::type initial_epsilon(initial_epsilonSEXP);
+    Rcpp::traits::input_parameter< double >::type Stop_Tolerance(Stop_ToleranceSEXP);
+    Rcpp::traits::input_parameter< int >::type Min_Iterations(Min_IterationsSEXP);
+    Rcpp::traits::input_parameter< int >::type Patience(PatienceSEXP);
+    Rcpp::traits::input_parameter< double >::type grad_clip(grad_clipSEXP);
+    rcpp_result_gen = Rcpp::wrap(mcvi(Model, Data, Iterations, Status, thinned, postpred, Dev, Mon, InitialValues, InitialCov, Thinning, T_mcmc, L_leapfrog, K_rb, h, learning_rate, spsa_scale, initial_epsilon, Stop_Tolerance, Min_Iterations, Patience, grad_clip));
+    return rcpp_result_gen;
+END_RCPP
+}
+// svgd
+List svgd(Function Model, List Data, int Iterations, int Status, arma::mat InitialParticles, int Thinning, arma::mat thinned, arma::mat postpred, arma::mat Dev, arma::mat Mon, double step_size, double h_scale, bool use_adam, double h_grad, double Stop_Tolerance, int Min_Iterations, int Patience, double grad_clip);
+RcppExport SEXP _YABS_svgd(SEXP ModelSEXP, SEXP DataSEXP, SEXP IterationsSEXP, SEXP StatusSEXP, SEXP InitialParticlesSEXP, SEXP ThinningSEXP, SEXP thinnedSEXP, SEXP postpredSEXP, SEXP DevSEXP, SEXP MonSEXP, SEXP step_sizeSEXP, SEXP h_scaleSEXP, SEXP use_adamSEXP, SEXP h_gradSEXP, SEXP Stop_ToleranceSEXP, SEXP Min_IterationsSEXP, SEXP PatienceSEXP, SEXP grad_clipSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Function >::type Model(ModelSEXP);
+    Rcpp::traits::input_parameter< List >::type Data(DataSEXP);
+    Rcpp::traits::input_parameter< int >::type Iterations(IterationsSEXP);
+    Rcpp::traits::input_parameter< int >::type Status(StatusSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type InitialParticles(InitialParticlesSEXP);
+    Rcpp::traits::input_parameter< int >::type Thinning(ThinningSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type thinned(thinnedSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type postpred(postpredSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Dev(DevSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type Mon(MonSEXP);
+    Rcpp::traits::input_parameter< double >::type step_size(step_sizeSEXP);
+    Rcpp::traits::input_parameter< double >::type h_scale(h_scaleSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_adam(use_adamSEXP);
+    Rcpp::traits::input_parameter< double >::type h_grad(h_gradSEXP);
+    Rcpp::traits::input_parameter< double >::type Stop_Tolerance(Stop_ToleranceSEXP);
+    Rcpp::traits::input_parameter< int >::type Min_Iterations(Min_IterationsSEXP);
+    Rcpp::traits::input_parameter< int >::type Patience(PatienceSEXP);
+    Rcpp::traits::input_parameter< double >::type grad_clip(grad_clipSEXP);
+    rcpp_result_gen = Rcpp::wrap(svgd(Model, Data, Iterations, Status, InitialParticles, Thinning, thinned, postpred, Dev, Mon, step_size, h_scale, use_adam, h_grad, Stop_Tolerance, Min_Iterations, Patience, grad_clip));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_YABS_gradN", (DL_FUNC) &_YABS_gradN, 5},
@@ -175,6 +291,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_YABS_ohss", (DL_FUNC) &_YABS_ohss, 14},
     {"_YABS_nuts", (DL_FUNC) &_YABS_nuts, 15},
     {"_YABS_samplingImportanceResampling", (DL_FUNC) &_YABS_samplingImportanceResampling, 5},
+    {"_YABS_sagva", (DL_FUNC) &_YABS_sagva, 17},
+    {"_YABS_qnsagva", (DL_FUNC) &_YABS_qnsagva, 19},
+    {"_YABS_mcvi", (DL_FUNC) &_YABS_mcvi, 22},
+    {"_YABS_svgd", (DL_FUNC) &_YABS_svgd, 18},
     {NULL, NULL, 0}
 };
 

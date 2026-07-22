@@ -1,7 +1,7 @@
 ---
 title: "YABS Introduction"
 author: "Vithor Rosa Franco"
-date: "2023-02-03"
+date: "`r Sys.Date()`"
 output:
   pdf_document: default
   html_document: default
@@ -102,7 +102,7 @@ Model <- function(parm, Data){
   LP <- LL + Lp
   Modelout <- list(LP=LP, Dev=-2*LL, Monitor=c(LL, Lp),
                    yhat=rnorm(n=Data$n, mean=mu, sd=sigma),
-                   parm=parm)
+                   parm=c(beta, sigma))
   return(Modelout)
 }
 Model <- compiler::cmpfun(Model)

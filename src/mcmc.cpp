@@ -2,6 +2,10 @@
 // [[Rcpp::plugins(cpp11)]]
 
 #include <RcppArmadillo.h>
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <vector>
 
 using namespace Rcpp;
 using namespace arma;
@@ -1034,6 +1038,1089 @@ List samplingImportanceResampling(arma::vec MAP, arma::mat VarCov, Function Mode
                         Named("weights_psis") = w_psis,
                         Named("log_w_psis") = log_w_psis,
                         Named("pareto_k") = pareto_k
+    );
+}
+
+// ====================================VB Algorithms====================================
+
+// The variational algorithms below work with the unnormalised log posterior returned
+// in Model(...)["LP"].  Numerical derivatives are scale-aware and all covariance /
+// precision matrices are projected back to the positive-definite cone when needed.
+
+inline double vb_lp(Function Model, List Data, const arma::vec& x) {
+    List out = Model(wrap(x), Data);
+    double value = as<double>(out["LP"]);
+    return std::isfinite(value) ? value : -std::numeric_limits<double>::infinity();
+}
+
+arma::vec vb_steps(const arma::vec& x, double h) {
+    arma::vec out = h * arma::max(arma::abs(x), arma::ones<arma::vec>(x.n_elem));
+    out.transform([](double v) { return std::max(v, 1e-8); });
+    return out;
+}
+
+arma::vec vb_grad(Function Model, List Data, const arma::vec& x, double h = 1e-4) {
+    int d = x.n_elem;
+    arma::vec out(d, fill::zeros);
+    arma::vec hs = vb_steps(x, h);
+
+    for (int j = 0; j < d; ++j) {
+        arma::vec xp = x;
+        arma::vec xm = x;
+        xp[j] += hs[j];
+        xm[j] -= hs[j];
+        double fp = vb_lp(Model, Data, xp);
+        double fm = vb_lp(Model, Data, xm);
+
+        if (std::isfinite(fp) && std::isfinite(fm)) {
+            out[j] = (fp - fm) / (2.0 * hs[j]);
+        } else {
+            // One-sided fallback around the current point.
+            double f0 = vb_lp(Model, Data, x);
+            if (std::isfinite(fp) && std::isfinite(f0)) {
+                out[j] = (fp - f0) / hs[j];
+            } else if (std::isfinite(fm) && std::isfinite(f0)) {
+                out[j] = (f0 - fm) / hs[j];
+            }
+        }
+        if (!std::isfinite(out[j])) out[j] = 0.0;
+    }
+    return out;
+}
+
+arma::mat vb_hessian(Function Model, List Data, const arma::vec& x,
+                     double h = 1e-4) {
+    int d = x.n_elem;
+    arma::mat H(d, d, fill::zeros);
+    arma::vec hs = vb_steps(x, h);
+    double f0 = vb_lp(Model, Data, x);
+
+    for (int i = 0; i < d; ++i) {
+        arma::vec xp = x;
+        arma::vec xm = x;
+        xp[i] += hs[i];
+        xm[i] -= hs[i];
+        double fp = vb_lp(Model, Data, xp);
+        double fm = vb_lp(Model, Data, xm);
+        if (std::isfinite(fp) && std::isfinite(fm) && std::isfinite(f0)) {
+            H(i, i) = (fp - 2.0 * f0 + fm) / (hs[i] * hs[i]);
+        }
+
+        for (int j = i + 1; j < d; ++j) {
+            arma::vec xpp = x;
+            arma::vec xpm = x;
+            arma::vec xmp = x;
+            arma::vec xmm = x;
+            xpp[i] += hs[i]; xpp[j] += hs[j];
+            xpm[i] += hs[i]; xpm[j] -= hs[j];
+            xmp[i] -= hs[i]; xmp[j] += hs[j];
+            xmm[i] -= hs[i]; xmm[j] -= hs[j];
+            double fpp = vb_lp(Model, Data, xpp);
+            double fpm = vb_lp(Model, Data, xpm);
+            double fmp = vb_lp(Model, Data, xmp);
+            double fmm = vb_lp(Model, Data, xmm);
+            if (std::isfinite(fpp) && std::isfinite(fpm) &&
+                std::isfinite(fmp) && std::isfinite(fmm)) {
+                double hij = (fpp - fpm - fmp + fmm) /
+                    (4.0 * hs[i] * hs[j]);
+                H(i, j) = hij;
+                H(j, i) = hij;
+            }
+        }
+    }
+
+    H = 0.5 * (H + H.t());
+    return H;
+}
+
+arma::mat vb_make_pd(const arma::mat& A, double eig_floor = 1e-8,
+                     double eig_ceiling = 1e8) {
+    arma::mat S = 0.5 * (A + A.t());
+    arma::vec eigval;
+    arma::mat eigvec;
+    bool ok = arma::eig_sym(eigval, eigvec, S);
+    if (!ok || eigval.n_elem == 0 || !eigval.is_finite()) {
+        return arma::eye(A.n_rows, A.n_cols);
+    }
+    eigval.transform([&](double v) {
+        if (!std::isfinite(v)) return eig_floor;
+        return std::min(std::max(v, eig_floor), eig_ceiling);
+    });
+    return eigvec * arma::diagmat(eigval) * eigvec.t();
+}
+
+arma::mat vb_safe_inverse(const arma::mat& A, double eig_floor = 1e-8) {
+    arma::mat P = vb_make_pd(A, eig_floor);
+    arma::mat out;
+    bool ok = arma::inv_sympd(out, P);
+    if (!ok || !out.is_finite()) {
+        out = arma::pinv(P);
+    }
+    return vb_make_pd(out, eig_floor);
+}
+
+arma::mat vb_rmvnorm(int n, const arma::vec& mu, const arma::mat& Sigma,
+                     double eig_floor = 1e-8) {
+    arma::mat S = vb_make_pd(Sigma, eig_floor);
+    arma::mat C;
+    bool ok = arma::chol(C, S, "lower");
+    if (!ok) {
+        S += 1e-6 * arma::eye(S.n_rows, S.n_cols);
+        arma::chol(C, S, "lower");
+    }
+    arma::mat Z = arma::randn(n, mu.n_elem);
+    return Z * C.t() + arma::repmat(mu.t(), n, 1);
+}
+
+inline double vb_log_q_gaussian(const arma::vec& x, const arma::vec& mu,
+                                const arma::mat& Sigma) {
+    arma::mat S = vb_make_pd(Sigma, 1e-10);
+    arma::mat C;
+    bool ok = arma::chol(C, S, "lower");
+    if (!ok) return -std::numeric_limits<double>::infinity();
+    arma::vec z = arma::solve(arma::trimatl(C), x - mu);
+    double logdet = 2.0 * arma::sum(arma::log(C.diag()));
+    return -0.5 * (x.n_elem * std::log(2.0 * M_PI) + logdet + arma::dot(z, z));
+}
+
+inline double vb_log_diag_normal(const arma::vec& x, const arma::vec& mu,
+                                 const arma::vec& log_sd) {
+    arma::vec z = (x - mu) % arma::exp(-log_sd);
+    return -0.5 * x.n_elem * std::log(2.0 * M_PI) -
+        arma::sum(log_sd) - 0.5 * arma::dot(z, z);
+}
+
+void vb_store_draw(Function Model, List Data, const arma::vec& x, int row,
+                   arma::mat& thinned, arma::mat& postpred,
+                   arma::mat& Dev, arma::mat& Mon,
+                   arma::mat& latent, arma::vec& LP) {
+    List out = Model(wrap(x), Data);
+    thinned.row(row) = as<arma::vec>(out["parm"]).t();
+    postpred.row(row) = as<arma::vec>(out["yhat"]).t();
+    Dev.row(row) = as<arma::vec>(out["Dev"]).t();
+    Mon.row(row) = as<arma::vec>(out["Monitor"]).t();
+    latent.row(row) = x.t();
+    LP[row] = as<double>(out["LP"]);
+}
+
+bool vb_convergence_update(double criterion, double tolerance, int iter,
+                           int min_iter, int patience, int& stable_count) {
+    if (tolerance <= 0.0 || iter + 1 < min_iter || !std::isfinite(criterion)) {
+        stable_count = 0;
+        return false;
+    }
+    if (criterion < tolerance) ++stable_count;
+    else stable_count = 0;
+    return stable_count >= patience;
+}
+
+arma::mat vb_reconstruct_lbfgs_hessian(
+    const std::vector<arma::vec>& s_hist,
+    const std::vector<arma::vec>& y_hist,
+    int d, double damping, double eig_floor) {
+
+    if (s_hist.empty()) return arma::eye(d, d);
+
+    const arma::vec& sl = s_hist.back();
+    const arma::vec& yl = y_hist.back();
+    double ys_last = arma::dot(yl, sl);
+    double gamma = 1.0;
+    if (ys_last > 1e-12) {
+        gamma = arma::dot(yl, yl) / ys_last;
+    }
+    gamma = std::min(std::max(gamma, 1e-6), 1e6);
+    arma::mat B = gamma * arma::eye(d, d);
+
+    for (std::size_t k = 0; k < s_hist.size(); ++k) {
+        arma::vec s = s_hist[k];
+        arma::vec y = y_hist[k];
+        arma::vec Bs = B * s;
+        double sBs = arma::dot(s, Bs);
+        double ys = arma::dot(y, s);
+        if (!(sBs > 1e-12) || !std::isfinite(sBs) || !std::isfinite(ys)) continue;
+
+        if (ys < damping * sBs) {
+            double denom = sBs - ys;
+            if (std::abs(denom) > 1e-12) {
+                double theta = (1.0 - damping) * sBs / denom;
+                theta = std::min(std::max(theta, 0.0), 1.0);
+                y = theta * y + (1.0 - theta) * Bs;
+                ys = arma::dot(y, s);
+            }
+        }
+        if (!(ys > 1e-12)) continue;
+
+        B -= (Bs * Bs.t()) / sBs;
+        B += (y * y.t()) / ys;
+        B = vb_make_pd(B, eig_floor);
+    }
+    return B;
+}
+
+// [[Rcpp::export]]
+List sagva(Function Model, List Data, int Iterations, int Status,
+           arma::vec InitialValues, arma::mat InitialCov, int Thinning,
+           arma::mat thinned, arma::mat postpred,
+           arma::mat Dev, arma::mat Mon,
+           double h = 1e-4,
+           double learning_rate = -1.0,
+           double Stop_Tolerance = 1e-4,
+           int Min_Iterations = 200,
+           int Patience = 50,
+           double eig_floor = 1e-8) {
+
+    RNGScope scope;
+    int d = InitialValues.n_elem;
+    int n_draws = thinned.n_rows;
+
+    arma::vec m = InitialValues;
+    arma::mat V = vb_make_pd(InitialCov, eig_floor);
+    arma::mat P = vb_safe_inverse(V, eig_floor);
+    arma::vec a(d, fill::zeros);
+    arma::vec z = m;
+
+    arma::vec avg_g(d, fill::zeros);
+    arma::vec avg_x(d, fill::zeros);
+    arma::mat avg_precision(d, d, fill::zeros);
+    int avg_count = 0;
+
+    //double w = learning_rate > 0.0 ? learning_rate : 1.0 / std::sqrt((double)Iterations);
+    //w = std::min(std::max(w, 1e-5), 1.0);
+    double w = 0.0;
+    double base_w = learning_rate > 0.0 ? learning_rate : 0.10;
+
+    double criterion = std::numeric_limits<double>::infinity();
+    double criterion_ema = criterion;
+    int stable_count = 0;
+    int completed = 0;
+    int invalid_updates = 0;
+    bool converged = false;
+
+    for (int iter = 0; iter < Iterations; ++iter) {
+        w = base_w * std::pow(10.0 / (10.0 + iter), 0.60);
+        w = std::min(std::max(w, 1e-5), 1.0);
+
+        arma::vec old_m = m;
+        arma::mat old_V = V;
+
+        arma::vec x = vb_rmvnorm(1, m, V, eig_floor).row(0).t();
+        arma::vec g = vb_grad(Model, Data, x, h);
+        arma::mat H = vb_hessian(Model, Data, x, h);
+
+        if (!g.is_finite() || !H.is_finite()) {
+            ++invalid_updates;
+            V *= 0.5;
+            V = vb_make_pd(V, eig_floor);
+            P = vb_safe_inverse(V, eig_floor);
+            continue;
+        }
+
+        a = (1.0 - w) * a + w * g;
+        z = (1.0 - w) * z + w * x;
+        P = (1.0 - w) * P - w * H;
+        P = vb_make_pd(P, eig_floor);
+        V = vb_safe_inverse(P, eig_floor);
+        m = V * a + z;
+
+        if (!m.is_finite() || !V.is_finite()) {
+            ++invalid_updates;
+            m = old_m;
+            V = 0.5 * old_V;
+            V = vb_make_pd(V, eig_floor);
+            P = vb_safe_inverse(V, eig_floor);
+            continue;
+        }
+
+        if (iter >= Iterations / 2) {
+            ++avg_count;
+            avg_g += (g - avg_g) / (double)avg_count;
+            avg_x += (x - avg_x) / (double)avg_count;
+            arma::mat negH = -H;
+            avg_precision += (negH - avg_precision) / (double)avg_count;
+        }
+
+        double dm = arma::norm(m - old_m, 2) / (1.0 + arma::norm(old_m, 2));
+        double dV = arma::norm(V - old_V, "fro") / (1.0 + arma::norm(old_V, "fro"));
+        criterion = std::max(dm, dV);
+        if (!std::isfinite(criterion_ema)) criterion_ema = criterion;
+        else criterion_ema = 0.95 * criterion_ema + 0.05 * criterion;
+
+        completed = iter + 1;
+        if (Status > 0 && (iter + 1) % Status == 0) {
+            Rcout << "Iteration: " << iter + 1
+                  << ", LP(mean): " << vb_lp(Model, Data, m)
+                  << ", convergence criterion: " << criterion_ema << std::endl;
+        }
+
+        if (vb_convergence_update(criterion_ema, Stop_Tolerance, iter,
+                                  Min_Iterations, Patience, stable_count)) {
+            converged = true;
+            break;
+        }
+    }
+
+    arma::vec final_m = m;
+    arma::mat final_V = V;
+    if (avg_count > 1) {
+        arma::mat final_P = vb_make_pd(avg_precision, eig_floor);
+        final_V = vb_safe_inverse(final_P, eig_floor);
+        final_m = final_V * avg_g + avg_x;
+        if (!final_m.is_finite()) final_m = m;
+    }
+
+    arma::mat latent(n_draws, d, fill::zeros);
+    arma::vec LP(n_draws, fill::zeros);
+    arma::vec log_q(n_draws, fill::zeros);
+    arma::mat draws = vb_rmvnorm(n_draws, final_m, final_V, eig_floor);
+    for (int i = 0; i < n_draws; ++i) {
+        arma::vec x = draws.row(i).t();
+        vb_store_draw(Model, Data, x, i, thinned, postpred, Dev, Mon, latent, LP);
+        log_q[i] = vb_log_q_gaussian(x, final_m, final_V);
+    }
+    arma::vec elbo_samples = LP - log_q;
+
+    return List::create(
+        Named("thinned") = thinned,
+        Named("postpred") = postpred,
+        Named("Dev") = Dev,
+        Named("Mon") = Mon,
+        Named("latent") = latent,
+        Named("LP") = LP,
+        Named("log_q") = log_q,
+        Named("ELBO_samples") = elbo_samples,
+        Named("LowerBound") = arma::mean(elbo_samples),
+        Named("mean") = final_m,
+        Named("VarCov") = final_V,
+        Named("criterion") = criterion_ema,
+        Named("n_iter") = completed,
+        Named("converged") = converged,
+        Named("invalid_updates") = invalid_updates,
+        Named("learning_rate") = w
+    );
+}
+
+// [[Rcpp::export]]
+List qnsagva(Function Model, List Data, int Iterations, int Status,
+             arma::vec InitialValues, arma::mat InitialCov, int Thinning,
+             arma::mat thinned, arma::mat postpred,
+             arma::mat Dev, arma::mat Mon,
+             int memory = 10,
+             double h = 1e-4,
+             double damping = 0.2,
+             double learning_rate = -1.0,
+             double Stop_Tolerance = 1e-4,
+             int Min_Iterations = 200,
+             int Patience = 50,
+             double eig_floor = 1e-8) {
+
+    RNGScope scope;
+    int d = InitialValues.n_elem;
+    int n_draws = thinned.n_rows;
+    memory = std::max(memory, 1);
+
+    arma::vec m = InitialValues;
+    arma::mat V = vb_make_pd(InitialCov, eig_floor);
+    arma::mat P = vb_safe_inverse(V, eig_floor);
+    arma::vec a(d, fill::zeros);
+    arma::vec z = m;
+
+    std::vector<arma::vec> s_hist;
+    std::vector<arma::vec> y_hist;
+    arma::vec previous_x;
+    arma::vec previous_g;
+    bool have_previous = false;
+
+    arma::vec avg_g(d, fill::zeros);
+    arma::vec avg_x(d, fill::zeros);
+    arma::mat avg_precision(d, d, fill::zeros);
+    int avg_count = 0;
+
+    //double w = learning_rate > 0.0 ? learning_rate : 1.0 / std::sqrt((double)Iterations);
+    //w = std::min(std::max(w, 1e-5), 1.0);
+    double base_w = learning_rate > 0.0 ? learning_rate : 0.10;
+    double w = 0.0;
+
+    double criterion = std::numeric_limits<double>::infinity();
+    double criterion_ema = criterion;
+    int stable_count = 0;
+    int completed = 0;
+    int invalid_updates = 0;
+    int accepted_pairs = 0;
+    bool converged = false;
+
+    for (int iter = 0; iter < Iterations; ++iter) {
+        double w = base_w * std::pow(10.0 / (10.0 + iter), 0.60);
+        w = std::min(std::max(w, 1e-5), 1.0);
+
+        arma::vec old_m = m;
+        arma::mat old_V = V;
+
+        arma::vec x = vb_rmvnorm(1, m, V, eig_floor).row(0).t();
+        arma::vec g = vb_grad(Model, Data, x, h);
+        if (!g.is_finite()) {
+            ++invalid_updates;
+            V *= 0.5;
+            V = vb_make_pd(V, eig_floor);
+            P = vb_safe_inverse(V, eig_floor);
+            continue;
+        }
+
+        if (have_previous) {
+            arma::vec s = x - previous_x;
+            arma::vec y = previous_g - g; // Hessian of -log p times s near a mode.
+            double ys = arma::dot(y, s);
+            double scale = arma::norm(s, 2) * arma::norm(y, 2);
+            if (ys > 1e-10 * std::max(1.0, scale)) {
+                s_hist.push_back(s);
+                y_hist.push_back(y);
+                if ((int)s_hist.size() > memory) {
+                    s_hist.erase(s_hist.begin());
+                    y_hist.erase(y_hist.begin());
+                }
+                ++accepted_pairs;
+            }
+        }
+        previous_x = x;
+        previous_g = g;
+        have_previous = true;
+
+        arma::mat B = vb_reconstruct_lbfgs_hessian(
+            s_hist, y_hist, d, damping, eig_floor);
+        if (s_hist.empty()) B = P;
+
+        a = (1.0 - w) * a + w * g;
+        z = (1.0 - w) * z + w * x;
+        P = (1.0 - w) * P + w * B;
+        P = vb_make_pd(P, eig_floor);
+        V = vb_safe_inverse(P, eig_floor);
+        m = V * a + z;
+
+        if (!m.is_finite() || !V.is_finite()) {
+            ++invalid_updates;
+            m = old_m;
+            V = 0.5 * old_V;
+            V = vb_make_pd(V, eig_floor);
+            P = vb_safe_inverse(V, eig_floor);
+            continue;
+        }
+
+        if (iter >= Iterations / 2) {
+            ++avg_count;
+            avg_g += (g - avg_g) / (double)avg_count;
+            avg_x += (x - avg_x) / (double)avg_count;
+            avg_precision += (B - avg_precision) / (double)avg_count;
+        }
+
+        double dm = arma::norm(m - old_m, 2) / (1.0 + arma::norm(old_m, 2));
+        double dV = arma::norm(V - old_V, "fro") / (1.0 + arma::norm(old_V, "fro"));
+        criterion = std::max(dm, dV);
+        if (!std::isfinite(criterion_ema)) criterion_ema = criterion;
+        else criterion_ema = 0.95 * criterion_ema + 0.05 * criterion;
+
+        completed = iter + 1;
+        if (Status > 0 && (iter + 1) % Status == 0) {
+            Rcout << "Iteration: " << iter + 1
+                  << ", LP(mean): " << vb_lp(Model, Data, m)
+                  << ", curvature pairs: " << s_hist.size()
+                  << ", convergence criterion: " << criterion_ema << std::endl;
+        }
+
+        if (vb_convergence_update(criterion_ema, Stop_Tolerance, iter,
+                                  Min_Iterations, Patience, stable_count)) {
+            converged = true;
+            break;
+        }
+    }
+
+    arma::vec final_m = m;
+    arma::mat final_V = V;
+    if (avg_count > 1) {
+        arma::mat final_P = vb_make_pd(avg_precision, eig_floor);
+        final_V = vb_safe_inverse(final_P, eig_floor);
+        final_m = final_V * avg_g + avg_x;
+        if (!final_m.is_finite()) final_m = m;
+    }
+
+    arma::mat latent(n_draws, d, fill::zeros);
+    arma::vec LP(n_draws, fill::zeros);
+    arma::vec log_q(n_draws, fill::zeros);
+    arma::mat draws = vb_rmvnorm(n_draws, final_m, final_V, eig_floor);
+    for (int i = 0; i < n_draws; ++i) {
+        arma::vec x = draws.row(i).t();
+        vb_store_draw(Model, Data, x, i, thinned, postpred, Dev, Mon, latent, LP);
+        log_q[i] = vb_log_q_gaussian(x, final_m, final_V);
+    }
+    arma::vec elbo_samples = LP - log_q;
+
+    return List::create(
+        Named("thinned") = thinned,
+        Named("postpred") = postpred,
+        Named("Dev") = Dev,
+        Named("Mon") = Mon,
+        Named("latent") = latent,
+        Named("LP") = LP,
+        Named("log_q") = log_q,
+        Named("ELBO_samples") = elbo_samples,
+        Named("LowerBound") = arma::mean(elbo_samples),
+        Named("mean") = final_m,
+        Named("VarCov") = final_V,
+        Named("criterion") = criterion_ema,
+        Named("n_iter") = completed,
+        Named("converged") = converged,
+        Named("invalid_updates") = invalid_updates,
+        Named("accepted_curvature_pairs") = accepted_pairs,
+        Named("learning_rate") = w
+    );
+}
+
+// Run one Hamiltonian variational trajectory.  The forward momentum is standard
+// normal; the learned reverse model is diagonal Gaussian with mean
+// a_r * grad log p(z_t) + c_r * z_t + b_r.
+double vb_hvi_bound(Function Model, List Data,
+                    const arma::vec& theta,
+                    const std::vector<arma::vec>& eps0,
+                    const std::vector<std::vector<arma::vec> >& momentum,
+                    const std::vector<arma::vec>& a_r,
+                    const std::vector<arma::vec>& c_r,
+                    const std::vector<arma::vec>& b_r,
+                    const std::vector<arma::vec>& log_sd_r,
+                    int T_mcmc, int L_leapfrog, double h,
+                    int& invalid_count) {
+
+    int d = theta.n_elem / 2;
+    arma::vec mu = theta.subvec(0, d - 1);
+    arma::vec log_sd = theta.subvec(d, 2 * d - 1);
+    double epsilon = std::exp(theta[2 * d]);
+    double total = 0.0;
+
+    for (std::size_t k = 0; k < eps0.size(); ++k) {
+        arma::vec z = mu + arma::exp(log_sd) % eps0[k];
+        double lp_prev = vb_lp(Model, Data, z);
+        if (!std::isfinite(lp_prev)) {
+            ++invalid_count;
+            total += -1e12;
+            continue;
+        }
+        double Lk = lp_prev - vb_log_diag_normal(z, mu, log_sd);
+
+        for (int t = 0; t < T_mcmc; ++t) {
+            arma::vec v0 = momentum[k][t];
+            double log_q_v0 = -0.5 * d * std::log(2.0 * M_PI) - 0.5 * arma::dot(v0, v0);
+            arma::vec z_new = z;
+            arma::vec v_new = v0;
+            arma::vec g = vb_grad(Model, Data, z_new, h);
+
+            bool valid = g.is_finite();
+            for (int l = 0; l < L_leapfrog && valid; ++l) {
+                v_new += 0.5 * epsilon * g;
+                z_new += epsilon * v_new;
+                g = vb_grad(Model, Data, z_new, h);
+                if (!g.is_finite() || !z_new.is_finite() || !v_new.is_finite()) valid = false;
+                if (valid) v_new += 0.5 * epsilon * g;
+            }
+
+            double lp_new = valid ? vb_lp(Model, Data, z_new) :
+                -std::numeric_limits<double>::infinity();
+            if (!std::isfinite(lp_new)) {
+                ++invalid_count;
+                Lk += -1e12;
+                break;
+            }
+
+            arma::vec mu_r = a_r[t] % g + c_r[t] % z_new + b_r[t];
+            double log_r = vb_log_diag_normal(v_new, mu_r, log_sd_r[t]);
+            Lk += lp_new + log_r - lp_prev - log_q_v0;
+            z = z_new;
+            lp_prev = lp_new;
+        }
+        total += Lk;
+    }
+    return total / (double)eps0.size();
+}
+
+// [[Rcpp::export]]
+List mcvi(Function Model, List Data, int Iterations, int Status,
+          arma::mat thinned, arma::mat postpred,
+          arma::mat Dev, arma::mat Mon,
+          arma::vec InitialValues, arma::mat InitialCov,
+          int Thinning,
+          int T_mcmc = 3,
+          int L_leapfrog = 3,
+          int K_rb = 5,
+          double h = 1e-4,
+          double learning_rate = 5e-3,
+          double spsa_scale = 1e-3,
+          double initial_epsilon = -1.0,
+          double Stop_Tolerance = 1e-4,
+          int Min_Iterations = 200,
+          int Patience = 50,
+          double grad_clip = 100.0) {
+
+    RNGScope scope;
+    int d = InitialValues.n_elem;
+    int n_draws = thinned.n_rows;
+    T_mcmc = std::max(T_mcmc, 1);
+    L_leapfrog = std::max(L_leapfrog, 1);
+    K_rb = std::max(K_rb, 1);
+
+    arma::vec mu_q = InitialValues;
+    arma::vec init_var = vb_make_pd(InitialCov, 1e-8).diag();
+    init_var.transform([](double v) { return std::max(v, 1e-10); });
+    arma::vec log_sd_q = 0.5 * arma::log(init_var);
+
+    double epsilon = initial_epsilon;
+    if (!(epsilon > 0.0) || !std::isfinite(epsilon)) {
+        epsilon = FindReasonableEpsilon(InitialValues, Model, Data, h);
+    }
+    epsilon = std::min(std::max(epsilon, 1e-5), 1.0);
+
+    arma::vec theta(2 * d + 1, fill::zeros);
+    theta.subvec(0, d - 1) = mu_q;
+    theta.subvec(d, 2 * d - 1) = log_sd_q;
+    theta[2 * d] = std::log(epsilon);
+
+    std::vector<arma::vec> a_r(T_mcmc, arma::zeros(d));
+    std::vector<arma::vec> c_r(T_mcmc, arma::zeros(d));
+    std::vector<arma::vec> b_r(T_mcmc, arma::zeros(d));
+    std::vector<arma::vec> log_sd_r(T_mcmc, arma::zeros(d));
+
+    arma::vec adam_m(theta.n_elem, fill::zeros);
+    arma::vec adam_v(theta.n_elem, fill::zeros);
+    std::vector<arma::vec> m_ar(T_mcmc, arma::zeros(d)), v_ar(T_mcmc, arma::zeros(d));
+    std::vector<arma::vec> m_cr(T_mcmc, arma::zeros(d)), v_cr(T_mcmc, arma::zeros(d));
+    std::vector<arma::vec> m_br(T_mcmc, arma::zeros(d)), v_br(T_mcmc, arma::zeros(d));
+    std::vector<arma::vec> m_lr(T_mcmc, arma::zeros(d)), v_lr(T_mcmc, arma::zeros(d));
+
+    double beta1 = 0.9, beta2 = 0.999, adam_eps = 1e-8;
+    auto adam_update = [&](arma::vec& par, const arma::vec& gradv,
+                           arma::vec& m1, arma::vec& m2, int t, double lr) {
+        arma::vec g = gradv;
+        double ng = arma::norm(g, 2);
+        if (ng > grad_clip && ng > 0.0) g *= grad_clip / ng;
+        m1 = beta1 * m1 + (1.0 - beta1) * g;
+        m2 = beta2 * m2 + (1.0 - beta2) * (g % g);
+        arma::vec mhat = m1 / (1.0 - std::pow(beta1, t));
+        arma::vec vhat = m2 / (1.0 - std::pow(beta2, t));
+        par += lr * mhat / (arma::sqrt(vhat) + adam_eps);
+    };
+
+    arma::vec elbo_history(Iterations);
+    elbo_history.fill(arma::datum::nan);
+    double elbo_ema = -std::numeric_limits<double>::infinity();
+    double criterion = std::numeric_limits<double>::infinity();
+    int stable_count = 0;
+    int invalid_total = 0;
+    int completed = 0;
+    bool converged = false;
+
+    for (int iter = 0; iter < Iterations; ++iter) {
+        double lr_now = learning_rate / std::sqrt(1.0 + iter / 100.0);
+
+        std::vector<arma::vec> eps0(K_rb);
+        std::vector<std::vector<arma::vec> > momentum(
+            K_rb, std::vector<arma::vec>(T_mcmc));
+        for (int k = 0; k < K_rb; ++k) {
+            eps0[k] = arma::randn(d);
+            for (int t = 0; t < T_mcmc; ++t) momentum[k][t] = arma::randn(d);
+        }
+
+        arma::vec delta(theta.n_elem);
+        for (arma::uword j = 0; j < delta.n_elem; ++j) {
+            delta[j] = R::runif(0.0, 1.0) < 0.5 ? -1.0 : 1.0;
+        }
+        double c_t = spsa_scale / std::pow(iter + 1.0, 0.101);
+        c_t = std::max(c_t, 1e-6);
+        arma::vec theta_plus = theta + c_t * delta;
+        arma::vec theta_minus = theta - c_t * delta;
+
+        // Keep scales and HMC step size in a safe numerical range.
+        theta_plus.subvec(d, 2 * d - 1) =
+            arma::clamp(theta_plus.subvec(d, 2 * d - 1), -10.0, 5.0);
+        theta_minus.subvec(d, 2 * d - 1) =
+            arma::clamp(theta_minus.subvec(d, 2 * d - 1), -10.0, 5.0);
+        theta_plus[2 * d] = std::min(std::max(theta_plus[2 * d], std::log(1e-5)), std::log(1.0));
+        theta_minus[2 * d] = std::min(std::max(theta_minus[2 * d], std::log(1e-5)), std::log(1.0));
+
+        int invalid_plus = 0, invalid_minus = 0;
+        double Lplus = vb_hvi_bound(Model, Data, theta_plus, eps0, momentum,
+                                    a_r, c_r, b_r, log_sd_r,
+                                    T_mcmc, L_leapfrog, h, invalid_plus);
+        double Lminus = vb_hvi_bound(Model, Data, theta_minus, eps0, momentum,
+                                     a_r, c_r, b_r, log_sd_r,
+                                     T_mcmc, L_leapfrog, h, invalid_minus);
+        arma::vec g_theta = ((Lplus - Lminus) / (2.0 * c_t)) * delta;
+
+        arma::vec old_theta = theta;
+        adam_update(theta, g_theta, adam_m, adam_v, iter + 1, lr_now);
+        theta.subvec(d, 2 * d - 1) = arma::clamp(theta.subvec(d, 2 * d - 1), -10.0, 5.0);
+        theta[2 * d] = std::min(std::max(theta[2 * d], std::log(1e-5)), std::log(1.0));
+
+        // Current trajectories provide unbiased gradients for the reverse-model
+        // parameters because those parameters do not affect the forward chain.
+        arma::vec mu = theta.subvec(0, d - 1);
+        arma::vec log_sd = theta.subvec(d, 2 * d - 1);
+        epsilon = std::exp(theta[2 * d]);
+        std::vector<arma::vec> g_ar(T_mcmc, arma::zeros(d));
+        std::vector<arma::vec> g_cr(T_mcmc, arma::zeros(d));
+        std::vector<arma::vec> g_br(T_mcmc, arma::zeros(d));
+        std::vector<arma::vec> g_lr(T_mcmc, arma::zeros(d));
+        double Lcur = 0.0;
+        int invalid_cur = 0;
+
+        for (int k = 0; k < K_rb; ++k) {
+            arma::vec z = mu + arma::exp(log_sd) % eps0[k];
+            double lp_prev = vb_lp(Model, Data, z);
+            if (!std::isfinite(lp_prev)) {
+                ++invalid_cur;
+                Lcur += -1e12;
+                continue;
+            }
+            double Lk = lp_prev - vb_log_diag_normal(z, mu, log_sd);
+
+            for (int t = 0; t < T_mcmc; ++t) {
+                arma::vec v0 = momentum[k][t];
+                double log_q_v0 = -0.5 * d * std::log(2.0 * M_PI) - 0.5 * arma::dot(v0, v0);
+                arma::vec z_new = z;
+                arma::vec v_new = v0;
+                arma::vec g = vb_grad(Model, Data, z_new, h);
+                bool valid = g.is_finite();
+                for (int l = 0; l < L_leapfrog && valid; ++l) {
+                    v_new += 0.5 * epsilon * g;
+                    z_new += epsilon * v_new;
+                    g = vb_grad(Model, Data, z_new, h);
+                    if (!g.is_finite() || !z_new.is_finite() || !v_new.is_finite()) valid = false;
+                    if (valid) v_new += 0.5 * epsilon * g;
+                }
+                double lp_new = valid ? vb_lp(Model, Data, z_new) :
+                    -std::numeric_limits<double>::infinity();
+                if (!std::isfinite(lp_new)) {
+                    ++invalid_cur;
+                    Lk += -1e12;
+                    break;
+                }
+
+                arma::vec mu_r = a_r[t] % g + c_r[t] % z_new + b_r[t];
+                arma::vec inv_var = arma::exp(-2.0 * log_sd_r[t]);
+                arma::vec resid = v_new - mu_r;
+                double log_r = vb_log_diag_normal(v_new, mu_r, log_sd_r[t]);
+                Lk += lp_new + log_r - lp_prev - log_q_v0;
+
+                arma::vec score_mu = resid % inv_var;
+                g_ar[t] += score_mu % g;
+                g_cr[t] += score_mu % z_new;
+                g_br[t] += score_mu;
+                g_lr[t] += -arma::ones<arma::vec>(d) + (resid % resid) % inv_var;
+
+                z = z_new;
+                lp_prev = lp_new;
+            }
+            Lcur += Lk;
+        }
+
+        Lcur /= (double)K_rb;
+        for (int t = 0; t < T_mcmc; ++t) {
+            g_ar[t] /= (double)K_rb;
+            g_cr[t] /= (double)K_rb;
+            g_br[t] /= (double)K_rb;
+            g_lr[t] /= (double)K_rb;
+            adam_update(a_r[t], g_ar[t], m_ar[t], v_ar[t], iter + 1, lr_now);
+            adam_update(c_r[t], g_cr[t], m_cr[t], v_cr[t], iter + 1, lr_now);
+            adam_update(b_r[t], g_br[t], m_br[t], v_br[t], iter + 1, lr_now);
+            adam_update(log_sd_r[t], g_lr[t], m_lr[t], v_lr[t], iter + 1, lr_now);
+            log_sd_r[t] = arma::clamp(log_sd_r[t], -10.0, 5.0);
+        }
+
+        invalid_total += invalid_plus + invalid_minus + invalid_cur;
+        if (invalid_cur > K_rb / 2) {
+            // A self-recovery step for unstable Hamiltonian trajectories.
+            theta[2 * d] = std::max(theta[2 * d] - std::log(2.0), std::log(1e-5));
+            epsilon = std::exp(theta[2 * d]);
+        }
+
+        elbo_history[iter] = Lcur;
+        double old_ema = elbo_ema;
+        if (!std::isfinite(elbo_ema)) elbo_ema = Lcur;
+        else elbo_ema = 0.95 * elbo_ema + 0.05 * Lcur;
+        double dtheta = arma::norm(theta - old_theta, 2) /
+            (1.0 + arma::norm(old_theta, 2));
+        double delbo = std::isfinite(old_ema) ?
+            std::abs(elbo_ema - old_ema) / (1.0 + std::abs(old_ema)) :
+            std::numeric_limits<double>::infinity();
+        criterion = std::max(dtheta, delbo);
+        completed = iter + 1;
+
+        if (Status > 0 && (iter + 1) % Status == 0) {
+            Rcout << "Iteration: " << iter + 1
+                  << ", auxiliary lower bound: " << elbo_ema
+                  << ", epsilon: " << std::exp(theta[2 * d])
+                  << ", convergence criterion: " << criterion << std::endl;
+        }
+
+        if (vb_convergence_update(criterion, Stop_Tolerance, iter,
+                                  Min_Iterations, Patience, stable_count)) {
+            converged = true;
+            break;
+        }
+    }
+
+    mu_q = theta.subvec(0, d - 1);
+    log_sd_q = theta.subvec(d, 2 * d - 1);
+    epsilon = std::exp(theta[2 * d]);
+
+    // Re-estimate the final auxiliary lower bound with fresh common-random-number
+    // draws.  The running EMA is useful for stopping, but it is not a clean estimate
+    // of the bound at the final variational parameters.
+    int K_eval = std::max(K_rb, 20);
+    std::vector<arma::vec> eval_eps0(K_eval);
+    std::vector<std::vector<arma::vec> > eval_momentum(
+        K_eval, std::vector<arma::vec>(T_mcmc));
+    for (int k = 0; k < K_eval; ++k) {
+        eval_eps0[k] = arma::randn(d);
+        for (int t = 0; t < T_mcmc; ++t) eval_momentum[k][t] = arma::randn(d);
+    }
+    int invalid_eval = 0;
+    double final_bound = vb_hvi_bound(Model, Data, theta, eval_eps0, eval_momentum,
+                                      a_r, c_r, b_r, log_sd_r,
+                                      T_mcmc, L_leapfrog, h, invalid_eval);
+    invalid_total += invalid_eval;
+
+    arma::mat latent(n_draws, d, fill::zeros);
+    arma::vec LP(n_draws, fill::zeros);
+    for (int i = 0; i < n_draws; ++i) {
+        arma::vec z = mu_q + arma::exp(log_sd_q) % arma::randn(d);
+        for (int t = 0; t < T_mcmc; ++t) {
+            arma::vec v = arma::randn(d);
+            arma::vec g = vb_grad(Model, Data, z, h);
+            bool valid = g.is_finite();
+            arma::vec old_z = z;
+            for (int l = 0; l < L_leapfrog && valid; ++l) {
+                v += 0.5 * epsilon * g;
+                z += epsilon * v;
+                g = vb_grad(Model, Data, z, h);
+                if (!g.is_finite() || !z.is_finite() || !v.is_finite()) valid = false;
+                if (valid) v += 0.5 * epsilon * g;
+            }
+            if (!valid || !std::isfinite(vb_lp(Model, Data, z))) {
+                z = old_z;
+                break;
+            }
+        }
+        vb_store_draw(Model, Data, z, i, thinned, postpred, Dev, Mon, latent, LP);
+    }
+
+    arma::vec final_mean = arma::mean(latent, 0).t();
+    arma::mat final_cov;
+    if (n_draws > 1) final_cov = arma::cov(latent);
+    else final_cov = arma::diagmat(arma::exp(2.0 * log_sd_q));
+    final_cov = vb_make_pd(final_cov, 1e-8);
+
+    arma::mat A_r(T_mcmc, d), C_r(T_mcmc, d), B_r(T_mcmc, d), LogSD_r(T_mcmc, d);
+    for (int t = 0; t < T_mcmc; ++t) {
+        A_r.row(t) = a_r[t].t();
+        C_r.row(t) = c_r[t].t();
+        B_r.row(t) = b_r[t].t();
+        LogSD_r.row(t) = log_sd_r[t].t();
+    }
+
+    arma::vec hist = elbo_history.head(std::max(completed, 1));
+    return List::create(
+        Named("thinned") = thinned,
+        Named("postpred") = postpred,
+        Named("Dev") = Dev,
+        Named("Mon") = Mon,
+        Named("latent") = latent,
+        Named("LP") = LP,
+        Named("mean") = final_mean,
+        Named("VarCov") = final_cov,
+        Named("q0_mean") = mu_q,
+        Named("q0_VarCov") = arma::diagmat(arma::exp(2.0 * log_sd_q)),
+        Named("A_r") = A_r,
+        Named("C_r") = C_r,
+        Named("b_r") = B_r,
+        Named("log_sd_r") = LogSD_r,
+        Named("LowerBound") = final_bound,
+        Named("ELBO_history") = hist,
+        Named("epsilon") = epsilon,
+        Named("criterion") = criterion,
+        Named("n_iter") = completed,
+        Named("converged") = converged,
+        Named("invalid_trajectories") = invalid_total
+    );
+}
+
+// [[Rcpp::export]]
+List svgd(Function Model, List Data, int Iterations, int Status,
+          arma::mat InitialParticles,
+          int Thinning,
+          arma::mat thinned, arma::mat postpred,
+          arma::mat Dev, arma::mat Mon,
+          double step_size = 0.01,
+          double h_scale = 1.0,
+          bool use_adam = true,
+          double h_grad = 1e-4,
+          double Stop_Tolerance = 1e-4,
+          int Min_Iterations = 200,
+          int Patience = 50,
+          double grad_clip = 100.0) {
+
+    RNGScope scope;
+    int n = InitialParticles.n_rows;
+    int d = InitialParticles.n_cols;
+    arma::mat X = InitialParticles;
+    arma::mat G(n, d, fill::zeros);
+    arma::mat adam_m(n, d, fill::zeros);
+    arma::mat adam_v(n, d, fill::zeros);
+    double beta1 = 0.9, beta2 = 0.999, adam_eps = 1e-8;
+
+    arma::vec stein_history(Iterations);
+    stein_history.fill(arma::datum::nan);
+    double bw = 1.0;
+    double criterion = std::numeric_limits<double>::infinity();
+    double criterion_ema = criterion;
+    int stable_count = 0;
+    int invalid_gradients = 0;
+    int completed = 0;
+    bool converged = false;
+    double step_now = 0.0;
+
+    for (int iter = 0; iter < Iterations; ++iter) {
+        for (int i = 0; i < n; ++i) {
+            arma::vec g = vb_grad(Model, Data, X.row(i).t(), h_grad);
+            if (!g.is_finite()) {
+                g.zeros();
+                ++invalid_gradients;
+            }
+            double ng = arma::norm(g, 2);
+            if (ng > grad_clip && ng > 0.0) g *= grad_clip / ng;
+            G.row(i) = g.t();
+        }
+        step_now = step_size / std::sqrt(iter + 1.0);
+
+        arma::vec x2 = arma::sum(arma::square(X), 1);
+        arma::mat D = arma::repmat(x2, 1, n) +
+            arma::repmat(x2.t(), n, 1) - 2.0 * X * X.t();
+        D.transform([](double v) { return std::max(v, 0.0); });
+
+        arma::vec positive = D.elem(arma::find(D > 1e-14));
+        double median_sq = positive.n_elem > 0 ? arma::median(positive) : 1.0;
+        bw = h_scale * median_sq / std::log((double)n + 1.0);
+        bw = std::min(std::max(bw, 1e-8), 1e8);
+
+        arma::mat K = arma::exp(-D / bw);
+        arma::vec colsum = arma::sum(K, 0).t();
+        arma::mat attractive = K.t() * G;
+        arma::mat repulsive = (2.0 / bw) *
+            (arma::diagmat(colsum) * X - K.t() * X);
+        arma::mat Phi = (attractive + repulsive) / (double)n;
+
+        arma::mat old_X = X;
+        /* Adam or ordinary SVGD update occurs here */
+        double update_rms = std::sqrt(
+            arma::accu(arma::square(X - old_X)) /
+            static_cast<double>(n * d)
+        );
+        double particle_scale = std::sqrt(
+            arma::accu(arma::square(old_X)) /
+            static_cast<double>(n * d)
+        );
+        criterion = update_rms / (1.0 + particle_scale);
+
+        //criterion = std::sqrt(arma::accu(arma::square(Phi)) / (double)(n * d));
+        stein_history[iter] = criterion;
+        if (!std::isfinite(criterion_ema)) criterion_ema = criterion;
+        else criterion_ema = 0.95 * criterion_ema + 0.05 * criterion;
+
+        //arma::mat old_X = X;
+        if (use_adam) {
+            int t = iter + 1;
+            adam_m = beta1 * adam_m + (1.0 - beta1) * Phi;
+            adam_v = beta2 * adam_v + (1.0 - beta2) * arma::square(Phi);
+            arma::mat mhat = adam_m / (1.0 - std::pow(beta1, t));
+            arma::mat vhat = adam_v / (1.0 - std::pow(beta2, t));
+            //X += step_size * mhat / (arma::sqrt(vhat) + adam_eps);
+            X += step_now * mhat / (arma::sqrt(vhat) + adam_eps);
+        } else {
+            //X += step_size * Phi;
+            X += step_now * Phi;
+        }
+
+        if (!X.is_finite()) {
+            X = old_X;
+            //step_size *= 0.5;
+            step_now *= 0.5;
+            adam_m.zeros();
+            adam_v.zeros();
+        }
+
+        completed = iter + 1;
+        if (Status > 0 && (iter + 1) % Status == 0) {
+            double mean_lp = 0.0;
+            for (int i = 0; i < n; ++i) mean_lp += vb_lp(Model, Data, X.row(i).t());
+            mean_lp /= (double)n;
+            Rcout << "Iteration: " << iter + 1
+                  << ", mean LP: " << mean_lp
+                  << ", Stein update RMS: " << criterion_ema
+                  << ", bandwidth: " << bw << std::endl;
+        }
+
+        if (vb_convergence_update(criterion_ema, Stop_Tolerance, iter,
+                                  Min_Iterations, Patience, stable_count)) {
+            converged = true;
+            break;
+        }
+    }
+
+    arma::mat particles(n, d, fill::zeros);
+    arma::mat particle_yhat(n, postpred.n_cols, fill::zeros);
+    arma::mat particle_Dev(n, Dev.n_cols, fill::zeros);
+    arma::mat particle_Mon(n, Mon.n_cols, fill::zeros);
+    arma::vec particle_LP(n, fill::zeros);
+
+    for (int i = 0; i < n; ++i) {
+        List out = Model(wrap(X.row(i).t()), Data);
+        particles.row(i) = as<arma::vec>(out["parm"]).t();
+        particle_yhat.row(i) = as<arma::vec>(out["yhat"]).t();
+        particle_Dev.row(i) = as<arma::vec>(out["Dev"]).t();
+        particle_Mon.row(i) = as<arma::vec>(out["Monitor"]).t();
+        particle_LP[i] = as<double>(out["LP"]);
+    }
+
+    // Preserve the common return fields for compatibility, but store only final
+    // particles rather than the transient optimization path.
+    int n_store = thinned.n_rows;
+    arma::mat latent(n_store, d, fill::zeros);
+    arma::vec LP(n_store, fill::zeros);
+    for (int i = 0; i < n_store; ++i) {
+        int j = i % n;
+        thinned.row(i) = particles.row(j);
+        postpred.row(i) = particle_yhat.row(j);
+        Dev.row(i) = particle_Dev.row(j);
+        Mon.row(i) = particle_Mon.row(j);
+        latent.row(i) = X.row(j);
+        LP[i] = particle_LP[j];
+    }
+
+    arma::vec hist = stein_history.head(std::max(completed, 1));
+    return List::create(
+        Named("thinned") = thinned,
+        Named("postpred") = postpred,
+        Named("Dev") = Dev,
+        Named("Mon") = Mon,
+        Named("latent") = latent,
+        Named("LP") = LP,
+        Named("particles") = particles,
+        Named("latent_particles") = X,
+        Named("particles_yhat") = particle_yhat,
+        Named("particles_Dev") = particle_Dev,
+        Named("particles_Mon") = particle_Mon,
+        Named("particles_lp") = particle_LP,
+        Named("bandwidth") = bw,
+        Named("Stein_update_history") = hist,
+        Named("criterion") = criterion_ema,
+        Named("n_iter") = completed,
+        Named("converged") = converged,
+        Named("invalid_gradients") = invalid_gradients,
+        Named("step_size") = step_now
     );
 }
 
