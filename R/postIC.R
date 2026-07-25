@@ -50,13 +50,13 @@ postIC <- function(x, posterior = NULL) {
   
   ## DIC family
   mean_dev        <- mean(deviance_draws)
-  deviance_plugin <- which(min(deviance_draws))
+  deviance_plugin <- min(deviance_draws)
   var_dev         <- var(deviance_draws)
   p_DIC           <- mean_dev - deviance_plugin
   DIC_classic     <- deviance_plugin + 2 * p_DIC
   p_V             <- 0.5 * var_dev               # variance‑based penalty
   DIC_p           <- deviance_plugin + 2 * p_V
-  DIC_i           <- (DIC_classic + DIC_p)/2     # parameterization‑invariant DIC
+  DIC_i           <- mean_dev + p_V              # parameterization‑invariant DIC
   
   ## Output
   indices <- list(WBIC = wbic, WAIC = waic, p_WAIC = p_waic,
