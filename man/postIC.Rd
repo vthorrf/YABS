@@ -1,207 +1,318 @@
 \name{postIC}
 \alias{postIC}
-\title{Fully Bayesian Information Criterion}
+\title{Posterior Information Criteria, ICOMP Analogues, and Predictive Measures}
 \description{
-This function computes multiple Bayesian model information criteria.
+Computes Bayesian predictive criteria, posterior deviance summaries,
+importance-sampling diagnostics, and posterior correlation-based analogues of
+ICOMP criteria from pointwise posterior log-likelihood values and, optionally,
+posterior parameter draws.
 }
 \usage{
 postIC(x, posterior = NULL)
 }
 \arguments{
-   \item{x}{A required \eqn{S \times N} matrix of pointwise log-likelihood values, where \eqn{S} is the number of posterior samples and \eqn{N} is the number of observations.}
-   \item{posterior}{An optional \eqn{S \times d} matrix of posterior samples for the model parameters. This argument is required for the computation of the Bayesian MDL.}
+  \item{x}{A required numeric \eqn{S \times N} matrix of pointwise
+  log-likelihood values. Rows correspond to posterior draws and columns
+  correspond to observations or independent predictive units.}
+
+  \item{posterior}{An optional numeric \eqn{S \times d} matrix of posterior
+  parameter draws. It must have the same number of rows as \code{x}. When
+  supplied, it is used to calculate the posterior parameter correlation
+  complexity and the posterior ICOMP analogues. Fixed or deterministic
+  parameter columns should not be included.}
 }
 \value{
-A list containing the following elements:
+A list containing:
 \itemize{
-  \item{\code{WBIC}}{Widely Applicable Bayesian Information Criterion (Watanabe, 2013).}
-  \item{\code{WAIC}}{Widely Applicable Information Criterion (Watanabe, 2010).}
-  \item{\code{p_WAIC}}{Effective number of parameters from WAIC.}
-  \item{\code{lppd}}{Log-pointwise predictive density.}
-  \item{\code{TIC}}{Takeuchi Information Criterion (Takeuchi, 1976).}
-  \item{\code{EIC}}{Extended Information Criterion (Ishiguro et al., 1997).}
-  \item{\code{MDL}}{Fully Bayesian Minimum Description Length (Grünwald, 2007; Rissanen, 1989) on the deviance scale. Returns \code{NA} if \code{posterior} is not supplied.}
-  \item{\code{DIC}}{The classic Deviance Information Criterion (Spiegelhalter et al., 2002).}
-  \item{\code{p_DIC}}{Classic effective number of parameters for DIC.}
-  \item{\code{DIC_p}}{Alternative DIC that uses the variance‑based penalty (Gelman et al., 2014).}
-  \item{\code{p_V}}{Variance‑based effective number of parameters (Gelman et al., 2014).}
-  \item{\code{DIC_i}}{Parameterization‑invariant DIC proposed by Xiao and Rabe-Hesketh (2026).}
+  \item{\code{Dbar}}{Posterior mean deviance.}
+
+  \item{\code{WBIC}}{WBIC estimated by self-normalized importance sampling
+  from the ordinary posterior to the tempered posterior.}
+  \item{\code{WBIC_beta}}{Inverse temperature \eqn{1/\log(N)}.}
+  \item{\code{WBIC_ESS}}{Effective sample size of the normalized WBIC
+  importance weights.}
+  \item{\code{WBIC_relative_ESS}}{WBIC effective sample size divided by the
+  number of posterior draws.}
+  \item{\code{WBIC_max_weight}}{Largest normalized WBIC importance weight.}
+  \item{\code{WBIC_perplexity}}{Perplexity of the normalized WBIC weights.}
+  \item{\code{WBIC_relative_perplexity}}{WBIC perplexity divided by the
+  number of posterior draws.}
+
+  \item{\code{lppd}}{Log pointwise predictive density.}
+  \item{\code{WAIC}}{Backward-compatible alias for \code{WAIC2}.}
+  \item{\code{WAIC1}}{WAIC using the first common effective-parameter
+  formulation.}
+  \item{\code{p_WAIC1}}{Effective number of parameters used by
+  \code{WAIC1}.}
+  \item{\code{WAIC2}}{WAIC using the posterior variance of pointwise
+  log-likelihoods.}
+  \item{\code{p_WAIC2}}{Effective number of parameters used by
+  \code{WAIC2}.}
+
+  \item{\code{CPO}}{Raw importance-sampling conditional predictive
+  ordinates.}
+  \item{\code{log_CPO}}{Log conditional predictive ordinates. This is
+  numerically preferable to \code{CPO}.}
+  \item{\code{LPML}}{Log pseudo-marginal likelihood, equal to the sum of
+  \code{log_CPO}. Larger values indicate better predictive performance.}
+  \item{\code{LOOIC_IS}}{Raw importance-sampling leave-one-out information
+  criterion, equal to \eqn{-2\,\mathrm{LPML}}.}
+  \item{\code{p_LOO_IS}}{Raw importance-sampling estimate of the effective
+  number of parameters, \eqn{\mathrm{lppd}-\mathrm{LPML}}.}
+
+  \item{\code{LOOIC}}{PSIS-LOO information criterion when the optional
+  \pkg{loo} package is installed; otherwise \code{NA}.}
+  \item{\code{SE_LOOIC}}{Estimated standard error of \code{LOOIC}.}
+  \item{\code{elpd_LOO}}{Expected log predictive density from PSIS-LOO.}
+  \item{\code{SE_elpd_LOO}}{Estimated standard error of
+  \code{elpd_LOO}.}
+  \item{\code{p_LOO}}{Effective number of parameters from PSIS-LOO.}
+  \item{\code{SE_p_LOO}}{Estimated standard error of \code{p_LOO}.}
+  \item{\code{Pareto_k}}{Observation-level Pareto shape diagnostics when
+  \pkg{loo} is installed; otherwise \code{NULL}.}
+  \item{\code{PSIS_LOO}}{The complete object returned by \code{loo::loo()},
+  or \code{NULL} when \pkg{loo} is unavailable.}
+
+  \item{\code{DIC_i}}{Parameterization-invariant, plug-in-free DIC.}
+  \item{\code{p_V}}{Variance-based effective number of parameters,
+  \eqn{\tfrac{1}{2}\mathrm{Var}\{D(\theta)\}}.}
+
+  \item{\code{ICOMP}}{Posterior correlational analogue of
+  ICOMP based on inverse Fisher information.}
+  \item{\code{ICOMP_PEU}}{Posterior correlational analogue of the
+  posterior-expected-utility form of ICOMP. This is the principal ICOMP
+  result returned by the function.}
+  \item{\code{ICOMP_PEU_LN}}{Posterior correlational analogue of the
+  log-sample-size-weighted ICOMP-PEU criterion.}
+  \item{\code{CICOMP}}{Posterior correlational analogue of consistent
+  ICOMP.}
+  \item{\code{C_R}}{Posterior correlational complexity,
+  \eqn{-\tfrac{1}{2}\log|R_{\mathrm{post}}|}, where
+  \eqn{R_{\mathrm{post}}} is the posterior parameter correlation matrix.}
 }
 }
 \details{
-  All criteria are returned on the \emph{deviance scale}, so smaller values
-  indicate better model fit.
+The input must contain the same pointwise likelihood factorization for every
+model being compared. For hierarchical or latent-variable models, a column of
+\code{x} should represent the predictive unit that would be left out during
+cross-validation, such as an entire participant or cluster when appropriate.
 
-  \subsection{WBIC}{
-    The Widely Applicable Bayesian Information Criterion (Watanabe, 2013) is
-    defined as a weighted average of the log-likelihood at an inverse
-    temperature \eqn{\beta = 1/\log(N)}:
-    \deqn{\mathrm{WBIC} = -2 \sum_{s=1}^{S} w_s \log f(\mathbf{y}\mid\theta^{(s)}),}
-    where the weights are \eqn{w_s \propto \exp\big((\beta-1)\log
-    f(\mathbf{y}\mid\theta^{(s)})\big)}. WBIC is consistent for model
-    selection even in singular learning problems.
-  }
+Criteria expressed on the deviance scale, including \code{WBIC}, \code{WAIC},
+\code{LOOIC_IS}, \code{LOOIC}, \code{DIC_i}, \code{ICOMP},
+\code{ICOMP_PEU}, \code{ICOMP_PEU_LN}, and \code{CICOMP}, are minimized.
+Log predictive quantities such as \code{lppd}, \code{LPML}, and
+\code{elpd_LOO} are maximized.
 
-  \subsection{WAIC}{
-    The Widely Applicable Information Criterion (Watanabe, 2010) is:
-    \deqn{\mathrm{WAIC} = -2\big( \mathrm{lppd} - p_{\mathrm{WAIC}} \big)}
-    with
-    \eqn{\mathrm{lppd} = \sum_{i=1}^{N} \log \left( \frac{1}{S}
-    \sum_{s=1}^{S} \exp(\ell_{si}) \right)} (the log pointwise predictive
-    density) and
-    \eqn{p_{\mathrm{WAIC}} = \sum_{i=1}^{N} \mathrm{Var}_s[\ell_{si}]}
-    (the effective number of parameters). WAIC is asymptotically equivalent
-    to leave-one-out cross-validation.
-  }
+\subsection{WBIC}{
+The widely applicable Bayesian information criterion is defined as the
+posterior expectation of the negative twice log-likelihood at inverse
+temperature
+\deqn{\beta=1/\log(N).}
 
-  \subsection{TIC}{
-    The Takeuchi Information Criterion (Takeuchi, 1976) is an extension of
-    AIC that does not assume the true model is among the candidates. It
-    uses the empirical Fisher information and the covariance of the score
-    function. In the Bayesian context, we use the posterior means of the
-    parameters \eqn{\hat{\theta} = \mathbb{E}_{\theta|\mathbf{y}}[\theta]}.
-    The deviance is \eqn{D(\hat{\theta}) = -2\sum_{i=1}^{N}\ell_i(\hat{\theta})},
-    where \ell_i(\hat{\theta}) = \log f(y_i \mid \hat{\theta}). The penalty
-    is twice the sum over observations of the posterior variance of the
-    pointwise log-likelihood:
-    \deqn{p_{\mathrm{TIC}} = \sum_{i=1}^{N} \mathrm{Var}_{\theta|\mathbf{y}}
-    [\ell_i(\theta)].}
-    Thus,
-    \deqn{\mathrm{TIC} = D(\hat{\theta}) + 2 p_{\mathrm{TIC}}.}
-    In our implementation, we use the posterior means of the pointwise
-    log-likelihoods rather than plugging \eqn{\hat{\theta}} into the model,
-    which is computationally convenient and asymptotically equivalent.
-  }
+This function receives draws from the ordinary posterior, not draws generated
+directly from the tempered posterior. It therefore estimates WBIC by
+self-normalized importance sampling with weights
+\deqn{w_s \propto \exp\{(\beta-1)\ell(\theta^{(s)})\}.}
 
-  \subsection{EIC}{
-    The Extended Information Criterion (Ishiguro et al., 1997)
-    is a bootstrap-based variant of TIC. It estimates the optimism by
-    resampling from the posterior predictive distribution. Our implementation
-    uses a simple parametric bootstrap where for each MCMC draw \eqn{\theta^{(s)}},
-    we compute the average log-likelihood of the observed data
-    \eqn{\bar{\ell}_s = \frac{1}{N}\sum_{i=1}^{N}\ell_i(\theta^{(s)})} and
-    the overall mean \eqn{\bar{\ell} = \frac{1}{S}\sum_{s=1}^{S}\bar{\ell}_s}.
-    The bias estimate is the average deviation:
-    \deqn{\widehat{\mathrm{bias}} = \frac{1}{S}\sum_{s=1}^{S}
-    \big( \bar{\ell}_s - \bar{\ell} \big).}
-    The deviance at the posterior mean pointwise log-likelihoods is
-    \eqn{D(\hat{\ell}) = -2\sum_{i=1}^{N}\bar{\ell}_i}, where
-    \eqn{\bar{\ell}_i = \frac{1}{S}\sum_{s=1}^{S}\ell_i(\theta^{(s)})}.
-    Then,
-    \deqn{\mathrm{EIC} = D(\hat{\ell}) - 2N \cdot \widehat{\mathrm{bias}}.}
-    EIC tends to be more robust than TIC when the model is misspecified.
-  }
+The approximation may be unreliable when the tempered posterior is poorly
+represented by ordinary posterior draws. Users should inspect
+\code{WBIC_relative_ESS}, \code{WBIC_max_weight}, and
+\code{WBIC_relative_perplexity}. Concentrated weights indicate that the WBIC
+estimate is based effectively on only a small fraction of the posterior draws.
+For \eqn{N=1}, WBIC and its diagnostics are returned as \code{NA}.
+}
 
-  \subsection{Bayesian MDL}{
-    The Bayesian Minimum Description Length (Rissanen, 1989; Grünwald, 2007)
-    is approximated using a Laplace expansion:
-    \deqn{\mathrm{MDL} \approx -2\Bigg[ \mathbb{E}_{\theta|\mathbf{y}}[\log
-    f(\mathbf{y}\mid\theta)] - \frac{d}{2}\log N + \frac{1}{2}\log|\Sigma|
-    + \frac{d}{2}\log(2\pi e) \Bigg],}
-    where \eqn{d} is the number of parameters and \eqn{\Sigma} is the posterior
-    covariance matrix. The term \eqn{\mathbb{E}_{\theta|\mathbf{y}}[\log
-    f(\mathbf{y}\mid\theta)]} is approximated by the average of the total
-    log-likelihood across MCMC draws. The criterion is returned on the
-    deviance scale (multiplied by \eqn{-2}) to be comparable with other
-    criteria.
-  }
+\subsection{WAIC}{
+Let \eqn{\ell_{si}} be the log-likelihood contribution of predictive unit
+\eqn{i} at posterior draw \eqn{s}. The log pointwise predictive density is
+\deqn{\mathrm{lppd}=\sum_{i=1}^{N}\log\left\{\frac{1}{S}
+\sum_{s=1}^{S}\exp(\ell_{si})\right\}.}
 
-  \subsection{DIC family}{
-    The classic DIC (Spiegelhalter et al., 2002) is:
-    \deqn{\mathrm{DIC} = D(\bar{\theta}) + 2p_{\mathrm{DIC}},}
-    where \eqn{p_{\mathrm{DIC}} = \mathbb{E}[D(\theta)] - D(\bar{\theta})}.
-    It relies on the plug-in deviance \eqn{D(\bar{\theta})} and can be
-    unstable or negative when the posterior is multimodal (e.g., label
-    switching, sign switching, degenerate nonidentifiability).
+The function returns both common WAIC penalty estimates:
+\deqn{p_{\mathrm{WAIC},1}=2\sum_{i=1}^{N}\left[
+\log E_{\theta\mid y}\{p(y_i\mid\theta)\}-
+E_{\theta\mid y}\{\log p(y_i\mid\theta)\}\right],}
+\deqn{p_{\mathrm{WAIC},2}=\sum_{i=1}^{N}
+\mathrm{Var}_{\theta\mid y}\{\ell_i(\theta)\}.}
 
-    Gelman, Hwang, & Vehtari (2014) proposed a variance-based penalty:
-    \deqn{p_V = \frac{1}{2}\mathrm{Var}_{\theta|\mathbf{y}}[D(\theta)],}
-    which is always non‑negative and invariant to reparameterization.
-    They defined \eqn{\mathrm{DIC}_p = D(\bar{\theta}) + 2p_V}.
+The corresponding criteria are
+\deqn{\mathrm{WAIC}_j=-2(\mathrm{lppd}-p_{\mathrm{WAIC},j}).}
+The element named \code{WAIC} remains an alias for the variance-based
+\code{WAIC2} to preserve compatibility with earlier versions of YABS.
+}
 
-    Xiao & Rabe-Hesketh (2026) introduced \eqn{\mathrm{DIC}_i}, which
-    removes the plug-in deviance entirely:
-    \deqn{\mathrm{DIC}_i = \mathbb{E}_{\theta|\mathbf{y}}[D(\theta)] + p_V.}
-    This criterion is parameterization‑invariant, never produces a negative
-    penalty, and is asymptotically equivalent to WAIC. It is recommended
-    when multimodality is present or when the likelihood is not easily
-    factorizable.
-  }
+\subsection{CPO, LPML, and raw importance-sampling LOO}{
+The conditional predictive ordinate is the leave-one-out predictive density
+\deqn{\mathrm{CPO}_i=p(y_i\mid y_{-i}).}
+Using draws from the full posterior, it can be estimated through the
+harmonic-mean identity
+\deqn{\widehat{\mathrm{CPO}}_i=
+\left\{\frac{1}{S}\sum_{s=1}^{S}
+\frac{1}{p(y_i\mid\theta^{(s)})}\right\}^{-1}.}
+
+The log pseudo-marginal likelihood is
+\deqn{\mathrm{LPML}=\sum_{i=1}^{N}\log(\mathrm{CPO}_i),}
+and \code{LOOIC_IS} is \eqn{-2\,\mathrm{LPML}}. These quantities target
+leave-one-out predictive performance, but the raw harmonic-mean importance
+ratios can have high or infinite variance. They should therefore be interpreted
+cautiously, especially when they differ substantially from PSIS-LOO or WAIC.
+}
+
+\subsection{PSIS-LOO}{
+When the optional \pkg{loo} package is installed, \code{postIC()} also calls
+\code{loo::loo()} on the pointwise log-likelihood matrix. Pareto-smoothed
+importance sampling stabilizes the largest importance ratios and supplies
+observation-level Pareto \eqn{\hat{k}} diagnostics.
+
+Because the current \code{postIC()} interface does not receive chain
+identifiers, the call uses \code{r_eff = 1}. This assumption mainly affects
+Monte Carlo effective-sample-size and standard-error calculations when MCMC
+draws are autocorrelated. Users requiring chain-aware diagnostics should call
+\code{loo::loo()} directly with an appropriate relative-efficiency estimate.
+The complete \pkg{loo} object is retained in \code{PSIS_LOO}.
+}
+
+\subsection{Parameterization-invariant DIC}{
+For posterior deviance draws \eqn{D(\theta^{(s)})}, define
+\deqn{\bar D=E_{\theta\mid y}\{D(\theta)\},\qquad
+p_V=\frac{1}{2}\mathrm{Var}_{\theta\mid y}\{D(\theta)\}.}
+The plug-in-free criterion is
+\deqn{\mathrm{DIC}_i=\bar D+p_V.}
+It is invariant to one-to-one reparameterizations and avoids evaluating the
+deviance at the posterior mean parameters.
+}
+
+\subsection{Posterior correlational ICOMP analogues}{
+Let
+\deqn{R_{\mathrm{post}}=\mathrm{Cor}_{\theta\mid y}(\theta)}
+be the correlation matrix estimated from the posterior parameter draws. The
+correlational complexity used by this function is
+\deqn{C_R(R_{\mathrm{post}})
+=-\frac{1}{2}\log|R_{\mathrm{post}}|.}
+
+This complexity is zero when the posterior parameters are uncorrelated and
+increases as their joint posterior approaches linear dependence. Because it
+uses a correlation rather than a covariance matrix, it is invariant to
+separate shifts, changes of units, rescalings, and sign reversals of the
+parameters. It is not invariant to arbitrary nonlinear transformations or to
+transformations that mix parameters. It also discards differences in the
+marginal posterior variances and measures only posterior interdependence.
+
+The function returns the following posterior analogues:
+\deqn{\mathrm{ICOMP}=\bar D+2C_R,}
+\deqn{\mathrm{ICOMP}_{\mathrm{PEU}}=\bar D+d+2C_R,}
+\deqn{\mathrm{ICOMP}_{\mathrm{PEU\_LN}}
+=\bar D+d+2\log(N)C_R,}
+\deqn{\mathrm{CICOMP}
+=\bar D+d\{\log(N)+1\}+2C_R.}
+
+The element \code{ICOMP_PEU} is recommended as the main posterior ICOMP
+summary because it combines posterior mean fit, an explicit dimensional
+penalty, and a penalty for posterior parameter dependence. The basic
+\code{ICOMP} element has no direct penalty for adding posteriorly independent
+parameters. \code{ICOMP_PEU_LN} increases the dependence penalty with sample
+size, while \code{CICOMP} combines a CAIC-like dimensional penalty with
+correlational complexity.
+
+These quantities are not the exact published ICOMP criteria. The original
+forms use minus twice the maximized log-likelihood and a complexity measure
+of the estimated inverse Fisher information matrix. In \code{postIC()},
+\eqn{\bar D} replaces the maximized plug-in deviance and
+\eqn{R_{\mathrm{post}}} replaces the correlation matrix derived from inverse
+Fisher information. The posterior distribution and its prior therefore affect
+the complexity term. The original asymptotic or consistency properties should
+not be assumed to transfer automatically to these posterior analogues.
+
+When a posterior column has zero variance, the ICOMP quantities are returned
+as \code{NA}, because a correlation matrix cannot be defined. When the
+posterior correlation matrix is singular, \eqn{|R_{\mathrm{post}}|=0} and the
+correlational complexity diverges; \code{C_R} and all four ICOMP quantities
+are therefore returned as \code{Inf}.
+}
 }
 \references{
-Gelman, A., Hwang, J., & Vehtari, A. (2014). Understanding predictive information criteria for Bayesian models. \emph{Statistics and Computing, 24}, 997–1016.
+Bozdogan, H. (1990). On the information-based measure of covariance
+complexity and its application to the evaluation of multivariate linear
+models. \emph{Communications in Statistics---Theory and Methods, 19},
+221--278.
 
-Grünwald, P. D. (2007). \emph{The Minimum Description Length Principle}. MIT Press.
+Bozdogan, H. (2000). Akaike's information criterion and recent developments
+in information complexity. \emph{Journal of Mathematical Psychology, 44},
+62--91.
 
-Ishiguro, M., Sakamoto, Y., & Kitagawa, G. (1997). Bootstrapping loglikelihood and EIC, an extension of AIC. \emph{Annals of the Institute of Statistical Mathematics, 49}, 411–434.
+Geisser, S., & Eddy, W. F. (1979). A predictive approach to model selection.
+\emph{Journal of the American Statistical Association, 74}, 153--160.
 
-Rissanen, J. (1989). \emph{Stochastic Complexity in Statistical Inquiry}. World Scientific.
+Gelfand, A. E., Dey, D. K., & Chang, H. (1992). Model determination using
+predictive distributions with implementation via sampling-based methods. In
+J. M. Bernardo et al. (Eds.), \emph{Bayesian Statistics 4} (pp. 147--167).
+Oxford University Press.
 
-Spiegelhalter, D. J., Best, N. G., Carlin, B. P., & van der Linde, A. (2002). Bayesian measures of model complexity and fit. \emph{Journal of the Royal Statistical Society, Series B, 64}, 583–639.
+Gelman, A., Hwang, J., & Vehtari, A. (2014). Understanding predictive
+information criteria for Bayesian models. \emph{Statistics and Computing, 24},
+997--1016.
 
-Takeuchi, K. (1976). Distribution of information statistics and a criterion for model selection. \emph{Surikaisekikenkyusho Kokyuroku (in Japanese), 243}, 1–18.
+Kartal-Koc, E., & Bozdogan, H. (2015). Model selection in multivariate
+adaptive regression splines using information complexity as the fitness
+function. \emph{Machine Learning, 101}, 35--58.
 
-Watanabe, S. (2010). Asymptotic equivalence of Bayes cross validation and widely applicable information criterion in singular learning theory. \emph{Journal of Machine Learning Research, 11}, 3571–3594.
+Pamukcu, E., Bozdogan, H., & Calik, S. (2015). A novel hybrid dimension
+reduction technique for undersized high dimensional gene expression data sets
+using information complexity criterion for cancer classification.
+\emph{Computational and Mathematical Methods in Medicine, 2015}, 370640.
 
-Watanabe, S. (2013). A widely applicable Bayesian information criterion. \emph{Journal of Machine Learning Research, 14}(1), 867–897.
+Vehtari, A., Gelman, A., & Gabry, J. (2017). Practical Bayesian model
+evaluation using leave-one-out cross-validation and WAIC.
+\emph{Statistics and Computing, 27}, 1413--1432.
 
-Xiao, X., & Rabe-Hesketh, S. (2026). A Parameterization-Invariant DIC. \emph{arXiv preprint}, \url{https://arxiv.org/html/2605.27844v1}.
+Vehtari, A., Simpson, D., Gelman, A., Yao, Y., & Gabry, J. (2024). Pareto
+smoothed importance sampling. \emph{Journal of Machine Learning Research,
+25}(72), 1--58.
+
+Watanabe, S. (2010). Asymptotic equivalence of Bayes cross validation and
+widely applicable information criterion in singular learning theory.
+\emph{Journal of Machine Learning Research, 11}, 3571--3594.
+
+Watanabe, S. (2013). A widely applicable Bayesian information criterion.
+\emph{Journal of Machine Learning Research, 14}, 867--897.
+
+Xiao, X., & Rabe-Hesketh, S. (2026). A parameterization-invariant DIC.
+\emph{arXiv preprint arXiv:2605.27844}.
 }
 \examples{
-##### Multiple Linear Regression with 5 Predictors
-### Packages and functions====
-require(YABS)
-require(compiler)
+## Normal model with an analytically sampled posterior for the mean
+set.seed(123)
+y <- stats::rnorm(30, mean = 0.4, sd = 1)
 
-### Random data====
-seed <- 1234; N <- 200; V <- 5
-set.seed(seed)
-X <- sapply(1:V, function(g) rnorm(N))
-betas <- runif(V+1, .3, .7)
-y <- rnorm(N, cbind(1,X) \%*\% betas, 1)
+## Prior: mu ~ N(0, 10^2); sampling SD is known and equal to 1
+post_var <- 1 / (length(y) + 1 / 100)
+post_mean <- post_var * sum(y)
+mu_draws <- stats::rnorm(1000, post_mean, sqrt(post_var))
 
-### DATA LIST====
-parm.names <- c(paste("beta",0:V,sep=""),"sigma")
-pos.beta   <- grep("beta", parm.names)
-pos.sigma  <- grep("sigma", parm.names)
+log_lik <- t(vapply(
+  mu_draws,
+  function(mu) stats::dnorm(y, mean = mu, sd = 1, log = TRUE),
+  numeric(length(y))
+))
 
-PGF <- function(Data) {
-  beta  <- rnorm(ncol(Data$X)+1)
-  sigma <- rnorm(1)
-  return(c(beta, sigma))
-}
+result <- postIC(log_lik, posterior = matrix(mu_draws, ncol = 1))
+result$WAIC
+result$LPML
+result$DIC_i
+result$ICOMP_PEU
 
-Data <- list(X=X, y=y, n=N, parm.names=parm.names,
-             pos.beta=pos.beta, pos.sigma=pos.sigma,
-             PGF=PGF, mon.names="LP")
+## The dependence penalty is nonzero with correlated posterior parameters.
+posterior_two <- cbind(
+  theta1 = mu_draws,
+  theta2 = 0.8 * mu_draws + stats::rnorm(length(mu_draws), sd = 0.1)
+)
+result_two <- postIC(log_lik, posterior = posterior_two)
+result_two$C_R
+result_two$ICOMP
+result_two$ICOMP_PEU
+result_two$ICOMP_PEU_LN
+result_two$CICOMP
 
-Initial.Values <- PGF(Data)
-
-### MODEL====
-Model <- function(parm, Data){
-  beta  <- parm[Data$pos.beta]
-  sigma <- exp(parm[Data$pos.sigma])
-  
-  beta.prior  <- sum(dnorm(beta, 0, 1, log=TRUE))
-  sigma.prior <- sum(dgamma(sigma, 1e-2, 1e-2, log=TRUE))
-  Lp <- beta.prior + sigma.prior
-  
-  mu <- cbind(1,Data$X) \%*\% beta
-  pwLL <- dnorm(Data$y, mu, sigma, log=TRUE)
-  LL <- sum(pwLL)
-  
-  LP <- LL + Lp
-  
-  Modelout <- list(LP=LP, Dev=-2*LL, Monitor=pwLL, yhat=rnorm(Data$n, mu, sigma), parm=c(beta, sigma))
-  return(Modelout)
-}
-
-Model <- compiler::cmpfun(Model)
-
-### FIT====
-fit <- MCMC(Model, Data, Initial.Values=NULL, iterations=1000,
-            burnin=100, status=110, thinning=1, algo="mwg")
-
-### Criteria====
-postIC(fit$Monitor, posterior = fit$posterior)
+## PSIS-LOO fields are populated when the optional loo package is installed.
+result$LOOIC
 }

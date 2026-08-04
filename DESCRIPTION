@@ -2,7 +2,7 @@ Package: YABS
 Type: Package
 Title: YABS: Yet Another Bayesian Sampler
 Version: 0.4.2
-Date: 2026-07-25
+Date: 2026-08-04
 Authors@R: c(person("Vithor", "Franco", email = "vithorfranco@gmail.com", role = c("aut", "cre")))
 Description: Provides general purpose tools for helping users to implement Bayesian
              models using R functions. Currently, Metropolis-within-Gibbs, Random-walk
@@ -15,17 +15,17 @@ Encoding: UTF-8
 BugReports: https://github.com/vthorrf/YABS/issues
 RoxygenNote: 7.1.1
 Imports: Rcpp (>= 1.0.9),
-	 MASS (>= 7.3-58.1),
+         MASS (>= 7.3-58.1),
          Matrix (>= 1.5-1),
          parallel (>= 4.2.2),
          pbapply (>= 1.5-0),
-	 stats (>= 4.2.2)
+         stats (>= 4.2.2)
 Depends: coda (>= 0.19-4)
 Suggests: rstan,
           jagsUI,
-	  LaplacesDemon,
+          LaplacesDemon,
           nimble,
-          fmcmc
+          fmcmc,
+          loo
 LinkingTo: Rcpp,
            RcppArmadillo
-
